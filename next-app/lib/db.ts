@@ -46,6 +46,12 @@ export function getMeetings(type?: string, search?: string, year?: string, month
 
   let rows = database.prepare(query).all(...params) as Meeting[];
 
+  rows.sort((a, b) => {
+    const da = a.meeting_date ? new Date(a.meeting_date).getTime() : 0;
+    const db2 = b.meeting_date ? new Date(b.meeting_date).getTime() : 0;
+    return db2 - da;
+  });
+
   if (search) {
     const q = search.toLowerCase();
     rows = rows.filter(
