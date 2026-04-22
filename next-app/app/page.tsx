@@ -17,12 +17,10 @@ export default async function DashboardPage({
 }) {
   const { type, search, year, month } = await searchParams;
 
-  const [meetings, types, years, months] = await Promise.all([
-    Promise.resolve(getMeetings(type, search, year, month)),
-    Promise.resolve(getMeetingTypes()),
-    Promise.resolve(getMeetingYears()),
-    Promise.resolve(getMeetingMonths()),
-  ]);
+  const meetings = getMeetings(type, search, year, month);
+  const types = getMeetingTypes();
+  const years = getMeetingYears();
+  const months = getMeetingMonths();
 
   return (
     <div className="min-h-screen flex flex-col sm:flex-row gap-8 px-6 py-8 max-w-4xl mx-auto">

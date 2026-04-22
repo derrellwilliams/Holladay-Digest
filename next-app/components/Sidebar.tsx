@@ -1,8 +1,14 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback } from 'react';
+import { useRef } from 'react';
 import { getCanonicalType } from '@/lib/meetingColors';
+
+const MONTH_NAMES: Record<string, string> = {
+  Jan: 'January', Feb: 'February', Mar: 'March', Apr: 'April',
+  May: 'May', Jun: 'June', Jul: 'July', Aug: 'August',
+  Sep: 'September', Oct: 'October', Nov: 'November', Dec: 'December',
+};
 
 interface SidebarProps {
   types: string[];
@@ -17,21 +23,21 @@ interface SidebarProps {
 export default function Sidebar({ types, years, months, selectedType, selectedYear, selectedMonth, searchValue }: SidebarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const updateParam = useCallback(
-    (key: string, value: string | null) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (value) {
-        params.set(key, value);
-      } else {
-        params.delete(key);
-      }
-      router.push(`/?${params.toString()}`);
-    },
-    [router, searchParams]
-  );
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleSearch = useCallback(
-    (value: string) => {
+  const updateParam = (key: string, value: string | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+    router.push(`/?${params.toString()}`);
+  };
+
+  const handleSearch = (value: string) => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
       if (value) {
         params.set('search', value);
@@ -39,22 +45,12 @@ export default function Sidebar({ types, years, months, selectedType, selectedYe
         params.delete('search');
       }
       router.push(`/?${params.toString()}`);
-    },
-    [router, searchParams]
-  );
+    }, 300);
+  };
 
-  const toggleType = useCallback(
-    (type: string) => {
-      const current = searchParams.get('type');
-      updateParam('type', current === type ? null : type);
-    },
-    [searchParams, updateParam]
-  );
-
-  const MONTH_NAMES: Record<string, string> = {
-    Jan: 'January', Feb: 'February', Mar: 'March', Apr: 'April',
-    May: 'May', Jun: 'June', Jul: 'July', Aug: 'August',
-    Sep: 'September', Oct: 'October', Nov: 'November', Dec: 'December',
+  const toggleType = (type: string) => {
+    const current = searchParams.get('type');
+    updateParam('type', current === type ? null : type);
   };
 
   return (
@@ -77,6 +73,7 @@ export default function Sidebar({ types, years, months, selectedType, selectedYe
           defaultValue={searchValue}
           onChange={(e) => handleSearch(e.target.value)}
           placeholder="Search"
+          aria-label="Search meetings"
           className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-granite focus:border-transparent bg-white"
         />
       </div>
@@ -87,6 +84,7 @@ export default function Sidebar({ types, years, months, selectedType, selectedYe
           <li>
             <button
               onClick={() => updateParam('type', null)}
+              aria-pressed={!selectedType}
               className={`w-full text-left text-sm transition-colors ${
                 !selectedType ? 'font-bold text-granite' : 'font-normal text-granite/60 hover:text-granite'
               }`}
@@ -98,6 +96,7 @@ export default function Sidebar({ types, years, months, selectedType, selectedYe
             <li key={type}>
               <button
                 onClick={() => toggleType(type)}
+                aria-pressed={selectedType === type}
                 className={`w-full text-left text-sm transition-colors ${
                   selectedType === type ? 'font-bold text-granite' : 'font-normal text-granite/60 hover:text-granite'
                 }`}
@@ -114,6 +113,7 @@ export default function Sidebar({ types, years, months, selectedType, selectedYe
         <select
           value={selectedYear}
           onChange={(e) => updateParam('year', e.target.value || null)}
+          aria-label="Filter by year"
           className="w-full bg-transparent text-sm font-bold text-granite focus:outline-none cursor-pointer appearance-none"
           style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23475841' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0px center' }}
         >
@@ -129,6 +129,7 @@ export default function Sidebar({ types, years, months, selectedType, selectedYe
         <select
           value={selectedMonth}
           onChange={(e) => updateParam('month', e.target.value || null)}
+          aria-label="Filter by month"
           className="w-full bg-transparent text-sm font-bold text-granite focus:outline-none cursor-pointer appearance-none"
           style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23475841' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0px center' }}
         >

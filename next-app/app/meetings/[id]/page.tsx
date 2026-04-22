@@ -2,14 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getMeeting } from '@/lib/db';
 import { getCanonicalType, getSubtype } from '@/lib/meetingColors';
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return 'Unknown date';
-  if (/^[A-Za-z]/.test(dateStr)) return dateStr;
-  const d = new Date(dateStr + 'T00:00:00');
-  if (isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-}
+import { formatDate } from '@/lib/utils';
 
 function renderInline(text: string): string {
   return text.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
@@ -202,7 +195,7 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
               )}
             </div>
             <h1 className="text-5xl text-gray-900" style={{ fontFamily: 'var(--font-serif)' }}>
-              {formatDate(meeting.meeting_date)}
+              {formatDate(meeting.meeting_date, true)}
             </h1>
           </div>
           {meeting.pdf_url && (

@@ -1,14 +1,7 @@
 import Link from 'next/link';
 import { Meeting } from '@/lib/db';
 import { getCanonicalType } from '@/lib/meetingColors';
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return 'Unknown date';
-  if (/^[A-Za-z]/.test(dateStr)) return dateStr;
-  const d = new Date(dateStr + 'T00:00:00');
-  if (isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' });
-}
+import { formatDate } from '@/lib/utils';
 
 function getTopics(summary: string): string[] {
   const match = summary.match(/key topics discussed[^\n]*\n([\s\S]*?)(?=\n\d+\.\s|\n#{1,6}\s|\n\*\*\d+\.)/i);
@@ -45,17 +38,14 @@ export default function MeetingCard({ meeting, search = '' }: { meeting: Meeting
   const allTopics = getTopics(meeting.summary);
   const label = getCanonicalType(meeting.meeting_type);
 
-  // When searching, find sentences from the full summary containing the term
-  const searchSnippets = search ? (() => {
-    const term = search.toLowerCase();
-    const sentences = meeting.summary
-      .replace(/\*\*(.*?)\*\*/g, '$1')
-      .split(/(?<=[.!?])\s+|\n/)
-      .map(s => s.replace(/^[-*•#>\d.]+\s*/, '').trim())
-      .filter(s => s.length > 20 && s.toLowerCase().includes(term))
-      .slice(0, 3);
-    return sentences;
-  })() : [];
+  const searchSnippets = search
+    ? meeting.summary
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .split(/(?<=[.!?])\s+|\n/)
+        .map(s => s.replace(/^[-*•#>\d.]+\s*/, '').trim())
+        .filter(s => s.length > 20 && s.toLowerCase().includes(search.toLowerCase()))
+        .slice(0, 3)
+    : [];
 
   const topics = search
     ? allTopics.filter(t => t.toLowerCase().includes(search.toLowerCase()))

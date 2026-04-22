@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import { getCanonicalType } from './meetingColors';
 
 export interface Meeting {
   id: number;
@@ -31,27 +32,19 @@ export function getMeetings(type?: string, search?: string, year?: string, month
     params.push(`%${type}%`);
   }
 
-  // Dates stored as "Feb 05, 2026" — year is last 4 chars, month is first 3
   if (year) {
-    query += " AND meeting_date LIKE ?";
+    query += ' AND meeting_date LIKE ?';
     params.push(`%${year}`);
   }
 
   if (month) {
-    query += " AND meeting_date LIKE ?";
+    query += ' AND meeting_date LIKE ?';
     params.push(`${month}%`);
   }
 
   query += ' ORDER BY id DESC';
 
   let rows = database.prepare(query).all(...params) as Meeting[];
-
-  // Sort by parsed date descending (dates stored as "Feb 05, 2026")
-  rows.sort((a, b) => {
-    const da = a.meeting_date ? new Date(a.meeting_date).getTime() : 0;
-    const db2 = b.meeting_date ? new Date(b.meeting_date).getTime() : 0;
-    return db2 - da;
-  });
 
   if (search) {
     const q = search.toLowerCase();
@@ -77,31 +70,24 @@ export function getMeetingTypes(): string[] {
   const rows = database.prepare('SELECT DISTINCT meeting_type FROM meeting_summaries ORDER BY meeting_type').all() as { meeting_type: string }[];
   const seen = new Set<string>();
   for (const { meeting_type } of rows) {
-    const t = meeting_type.toLowerCase();
-    if (t.includes('city council')) seen.add('City Council');
-    else if (t.includes('planning commission')) seen.add('Planning Commission');
-    else {
-      const clean = meeting_type.replace(/\(opens in(to)? a? ?new window\)/gi, '').trim();
-      if (clean) seen.add(clean);
-    }
+    const canonical = getCanonicalType(meeting_type);
+    if (canonical) seen.add(canonical);
   }
   return Array.from(seen).sort();
 }
 
 export function getMeetingYears(): string[] {
   const database = getDb();
-  // Year is last 4 chars of "Feb 05, 2026"
   const rows = database
     .prepare("SELECT DISTINCT substr(meeting_date, -4) as year FROM meeting_summaries WHERE meeting_date IS NOT NULL ORDER BY year DESC")
     .all() as { year: string }[];
   return rows.map((r) => r.year).filter(Boolean);
 }
 
-const MONTH_ORDER = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTH_ORDER = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export function getMeetingMonths(): string[] {
   const database = getDb();
-  // Month is first 3 chars of "Feb 05, 2026"
   const rows = database
     .prepare("SELECT DISTINCT substr(meeting_date, 1, 3) as month FROM meeting_summaries WHERE meeting_date IS NOT NULL")
     .all() as { month: string }[];
