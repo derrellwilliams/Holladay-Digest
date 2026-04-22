@@ -1,6 +1,6 @@
 # OneSuite Digest
 
-An open-source tool for browsing city meeting minutes with AI-generated summaries. Works with any city that uses the [OneSuite](https://suiteonemedia.com) government portal platform.
+An open-source tool for browsing city meeting minutes with AI-generated summaries and email alerts. Works with any city that uses the [OneSuite](https://suiteonemedia.com) government portal platform.
 
 Built for Holladay, UT — adaptable to any OneSuite municipality in minutes.
 
@@ -14,10 +14,12 @@ Built for Holladay, UT — adaptable to any OneSuite municipality in minutes.
 - AI-generated structured summaries with key topics, decisions, and votes
 - Links to original PDF for each meeting
 - Automatically updates nightly when new minutes are posted
+- Email alerts — subscribers get a full summary digest the moment new minutes are available
 
 ## Stack
 
 - **Scraper** — Python, pdfplumber, Anthropic Claude API
+- **Email** — Resend (subscriber management + digest delivery)
 - **Automation** — GitHub Actions (nightly cron)
 - **Web app** — Next.js 15, Tailwind CSS, better-sqlite3
 - **Storage** — SQLite (`meeting_summaries.db`, committed to repo)
@@ -31,6 +33,7 @@ Nightly (midnight MT)
   → If new: downloads PDF, extracts text, summarizes with Claude
   → Commits updated database to main
   → Vercel detects the push and redeploys the site
+  → Sends email digest to all subscribers via Resend
 ```
 
 No API calls are made if nothing is new — zero cost on empty runs.
@@ -92,24 +95,40 @@ npm install
 npm run dev
 ```
 
+Create `next-app/.env.local` with your keys:
+```
+RESEND_API_KEY=re_...
+```
+
 Visit [http://localhost:3001](http://localhost:3001).
 
-### 3. Automated nightly updates (GitHub Actions)
+### 3. Email alerts (Resend)
 
-Add two repository secrets under **Settings → Secrets and variables → Actions**:
+1. Create a free account at [resend.com](https://resend.com)
+2. Add and verify your sending domain under **Domains**
+3. Note your **Audience ID** from the Audience page (via the API: `curl -H "Authorization: Bearer YOUR_KEY" https://api.resend.com/audiences`)
+4. Update the `AUDIENCE_ID` and `from` address in `scraper.py`
+
+Subscribers sign up via the form on the site. The scraper sends them a full HTML summary email whenever new minutes are found.
+
+### 4. Automated nightly updates (GitHub Actions)
+
+Add repository secrets under **Settings → Secrets and variables → Actions**:
 
 | Secret | Value |
 |--------|-------|
 | `ANTHROPIC_API_KEY` | Your Anthropic API key |
+| `RESEND_API_KEY` | Your Resend API key |
 | `ONESUITE_URL` | Your city's OneSuite URL (optional — defaults to Holladay) |
 
 The workflow (`.github/workflows/scrape.yml`) runs automatically every night. Trigger it manually anytime from the **Actions** tab.
 
-### 4. Hosting on Vercel
+### 5. Hosting on Vercel
 
 1. Import the repo into Vercel
 2. Set **Root Directory** to `next-app`
-3. Deploy — Vercel will auto-redeploy whenever the scraper commits a DB update
+3. Add `RESEND_API_KEY` under **Settings → Environment Variables**
+4. Deploy — Vercel will auto-redeploy whenever the scraper commits a DB update
 
 ---
 
@@ -117,15 +136,17 @@ The workflow (`.github/workflows/scrape.yml`) runs automatically every night. Tr
 
 ```
 /
-├── scraper.py                    # Scrapes PDFs, summarizes with Claude, saves to SQLite
+├── scraper.py                    # Scrapes PDFs, summarizes with Claude, sends email digest
 ├── meeting_summaries.db          # SQLite database (committed to repo)
 ├── pdfs/                         # Downloaded PDFs (git-ignored, transient)
 ├── .github/workflows/scrape.yml  # Nightly automation
 └── next-app/
     ├── app/
     │   ├── page.tsx                  # Dashboard
-    │   └── meetings/[id]/page.tsx    # Meeting detail
+    │   ├── meetings/[id]/page.tsx    # Meeting detail
+    │   └── api/subscribe/route.ts    # Email signup endpoint
     ├── components/
+    │   ├── EmailSignup.tsx           # Signup card
     │   ├── MeetingCard.tsx
     │   └── Sidebar.tsx
     └── lib/
