@@ -51,7 +51,7 @@ export default async function DashboardPage({
         ) : (
           <div className="grid grid-cols-1 gap-5">
             {meetings.map((meeting) => (
-              <MeetingCard key={meeting.id} meeting={meeting} />
+              <MeetingCard key={meeting.id} meeting={meeting} search={search ?? ''} />
             ))}
           </div>
         )}

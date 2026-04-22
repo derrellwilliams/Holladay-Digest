@@ -11,7 +11,6 @@ function formatDate(dateStr: string | null): string {
 }
 
 function getTopics(summary: string): string[] {
-  // Extract top-level bullets from "Key Topics Discussed" section
   const match = summary.match(/key topics discussed[^\n]*\n([\s\S]*?)(?=\n\d+\.\s|\n#{1,6}\s|\n\*\*\d+\.)/i);
   if (match) {
     const topics = match[1]
@@ -24,7 +23,6 @@ function getTopics(summary: string): string[] {
     if (topics.length > 0) return topics;
   }
 
-  // Fallback: grab first 5 non-empty, non-header lines
   return summary
     .split('\n')
     .map(l => l.replace(/^[-*•#>\d.]+\s*/, '').replace(/\*\*(.*?)\*\*/g, '$1').replace(/\|/g, '').trim())
@@ -33,9 +31,35 @@ function getTopics(summary: string): string[] {
     .map(t => t.length > 100 ? t.slice(0, 97).trimEnd() + '…' : t);
 }
 
-export default function MeetingCard({ meeting }: { meeting: Meeting }) {
-  const topics = getTopics(meeting.summary);
+function highlight(text: string, term: string) {
+  if (!term) return text;
+  const parts = text.split(new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
+  return parts.map((part, i) =>
+    part.toLowerCase() === term.toLowerCase()
+      ? <mark key={i} className="bg-yellow-200 text-gray-900 rounded-sm px-0.5">{part}</mark>
+      : part
+  );
+}
+
+export default function MeetingCard({ meeting, search = '' }: { meeting: Meeting; search?: string }) {
+  const allTopics = getTopics(meeting.summary);
   const label = getCanonicalType(meeting.meeting_type);
+
+  // When searching, find sentences from the full summary containing the term
+  const searchSnippets = search ? (() => {
+    const term = search.toLowerCase();
+    const sentences = meeting.summary
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .split(/(?<=[.!?])\s+|\n/)
+      .map(s => s.replace(/^[-*•#>\d.]+\s*/, '').trim())
+      .filter(s => s.length > 20 && s.toLowerCase().includes(term))
+      .slice(0, 3);
+    return sentences;
+  })() : [];
+
+  const topics = search
+    ? allTopics.filter(t => t.toLowerCase().includes(search.toLowerCase()))
+    : allTopics;
 
   return (
     <Link href={`/meetings/${meeting.id}`} className="block group">
@@ -53,17 +77,32 @@ export default function MeetingCard({ meeting }: { meeting: Meeting }) {
           </span>
         </div>
 
-        {/* Topics */}
+        {/* Topics / Search snippets */}
         <div className="flex-1">
-          <p className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">Key Topics</p>
-          <ul className="space-y-1.5">
-            {topics.map((topic, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                <span className="mt-1.5 w-1 h-1 rounded-full bg-gray-400 shrink-0" />
-                {topic.replace(/^[-–—]\s*/, '')}
-              </li>
-            ))}
-          </ul>
+          {search ? (
+            <ul className="space-y-2">
+              {searchSnippets.map((snippet, i) => (
+                <li key={i} className="text-sm text-gray-700 leading-snug">
+                  {highlight(snippet, search)}
+                </li>
+              ))}
+              {searchSnippets.length === 0 && (
+                <p className="text-sm text-gray-400 italic">Match found in full summary</p>
+              )}
+            </ul>
+          ) : (
+            <>
+              <p className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">Key Topics</p>
+              <ul className="space-y-1.5">
+                {topics.map((topic, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                    <span className="mt-1.5 w-1 h-1 rounded-full bg-gray-400 shrink-0" />
+                    {topic.replace(/^[-–—]\s*/, '')}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
       </article>
     </Link>
