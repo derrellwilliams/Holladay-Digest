@@ -1,13 +1,13 @@
 import Link from 'next/link';
 import { Meeting } from '@/lib/db';
-import { getTypeColor, getCanonicalType, getSubtype } from '@/lib/meetingColors';
+import { getCanonicalType } from '@/lib/meetingColors';
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return 'Unknown date';
   if (/^[A-Za-z]/.test(dateStr)) return dateStr;
   const d = new Date(dateStr + 'T00:00:00');
   if (isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' });
 }
 
 function getTopics(summary: string): string[] {
@@ -19,54 +19,51 @@ function getTopics(summary: string): string[] {
       .filter(l => /^[-*•]\s/.test(l.trim()))
       .map(l => l.replace(/^[-*•]\s*/, '').replace(/\*\*(.*?)\*\*/g, '$1').trim())
       .filter(Boolean)
-      .slice(0, 4)
-      .map(t => t.length > 55 ? t.slice(0, 52).trimEnd() + '…' : t);
+      .slice(0, 5)
+      .map(t => t.length > 100 ? t.slice(0, 97).trimEnd() + '…' : t);
     if (topics.length > 0) return topics;
   }
 
-  // Fallback: grab first 3 non-empty, non-header lines
+  // Fallback: grab first 5 non-empty, non-header lines
   return summary
     .split('\n')
     .map(l => l.replace(/^[-*•#>\d.]+\s*/, '').replace(/\*\*(.*?)\*\*/g, '$1').replace(/\|/g, '').trim())
     .filter(l => l.length > 20 && !/^(meeting type|date|time|location|presiding|field|structured summary)/i.test(l))
-    .slice(0, 3)
-    .map(t => t.length > 55 ? t.slice(0, 52).trimEnd() + '…' : t);
+    .slice(0, 5)
+    .map(t => t.length > 100 ? t.slice(0, 97).trimEnd() + '…' : t);
 }
 
 export default function MeetingCard({ meeting }: { meeting: Meeting }) {
   const topics = getTopics(meeting.summary);
   const label = getCanonicalType(meeting.meeting_type);
-  const subtype = getSubtype(meeting.meeting_type);
 
   return (
     <Link href={`/meetings/${meeting.id}`} className="block group">
-      <article className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-brand-600 transition-all duration-200 p-5 h-full flex flex-col gap-3">
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between gap-2">
-            <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${getTypeColor(meeting.meeting_type)}`}>
-              {label}
-            </span>
-            {subtype && (
-              <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                {subtype}
-              </span>
-            )}
-          </div>
-          <span className="text-base font-bold text-gray-900">{formatDate(meeting.meeting_date)}</span>
+      <article className="meeting-card bg-white rounded-2xl p-6 h-full flex flex-col gap-4 transition-all duration-200 group-hover:-translate-y-0.5">
+        {/* Date + badge row */}
+        <div className="flex items-center justify-between gap-4">
+          <span
+            className="text-3xl text-gray-900"
+            style={{ fontFamily: 'var(--font-serif)' }}
+          >
+            {formatDate(meeting.meeting_date)}
+          </span>
+          <span className="inline-block shrink-0 px-3 py-1 rounded-full text-sm font-medium text-gunmetal" style={{ backgroundColor: '#EFEFEF' }}>
+            {label}
+          </span>
         </div>
-        <ul className="flex-1 space-y-1">
-          {topics.map((topic, i) => (
-            <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
-              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-gray-300 shrink-0" />
-              {topic.replace(/^[-–—]\s*/, '')}
-            </li>
-          ))}
-        </ul>
-        <div className="flex items-center gap-1 text-xs font-medium text-brand-600 group-hover:text-brand-700">
-          Read full summary
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
+
+        {/* Topics */}
+        <div className="flex-1">
+          <p className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">Key Topics</p>
+          <ul className="space-y-1.5">
+            {topics.map((topic, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                <span className="mt-1.5 w-1 h-1 rounded-full bg-gray-400 shrink-0" />
+                {topic.replace(/^[-–—]\s*/, '')}
+              </li>
+            ))}
+          </ul>
         </div>
       </article>
     </Link>

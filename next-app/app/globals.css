@@ -1,3 +1,10 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.meeting-card {
+  box-shadow: 0 4px 24px 0 rgba(0,0,0,0.07), 0 1.5px 6px 0 rgba(0,0,0,0.04);
+}
+.meeting-card:hover {
+  box-shadow: 0 12px 40px 0 rgba(0,0,0,0.13), 0 3px 10px 0 rgba(0,0,0,0.07);
+}

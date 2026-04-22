@@ -35,7 +35,7 @@ export default function SearchBar({ defaultValue = '' }: { defaultValue?: string
         defaultValue={defaultValue}
         onChange={(e) => handleChange(e.target.value)}
         placeholder="Search summaries..."
-        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent bg-white"
+        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-granite focus:border-transparent bg-white"
       />
     </div>
   );

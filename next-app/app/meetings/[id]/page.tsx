@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getMeeting } from '@/lib/db';
-import { getTypeColor, getCanonicalType, getSubtype } from '@/lib/meetingColors';
+import { getCanonicalType, getSubtype } from '@/lib/meetingColors';
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return 'Unknown date';
@@ -11,13 +11,8 @@ function formatDate(dateStr: string | null): string {
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
-function renderInline(text: string): React.ReactNode {
-  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) return <strong key={i}>{part.slice(2, -2)}</strong>;
-    if (part.startsWith('*') && part.endsWith('*')) return <em key={i}>{part.slice(1, -1)}</em>;
-    return part;
-  });
+function renderInline(text: string): string {
+  return text.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
 }
 
 function renderTable(lines: string[]) {
@@ -42,45 +37,52 @@ function renderTable(lines: string[]) {
   );
 }
 
+function trimToKeyTopics(text: string): string {
+  const match = text.search(/^##?\s*\d*\.?\s*key topics discussed/im);
+  return match !== -1 ? text.slice(match) : text;
+}
+
 function renderSummary(text: string) {
-  const blocks = text.split(/\n{2,}/);
+  const blocks = trimToKeyTopics(text).split(/\n{2,}/);
   return blocks.map((block, i) => {
     const lines = block.split('\n').filter(Boolean);
     if (!lines.length) return null;
 
-    // Horizontal rule
+    // Skip horizontal rules
     if (lines.length === 1 && /^---+$/.test(lines[0].trim())) {
-      return <hr key={i} className="border-gray-200 my-2" />;
+      return null;
     }
 
     // Markdown table
     if (lines.some(l => l.includes('|'))) {
-      return <div key={i}>{renderTable(lines)}</div>;
+      return <div key={i} className="mt-6">{renderTable(lines)}</div>;
     }
 
-    // Blockquote
+    // Blockquote — render as plain italic note, no border
     if (lines.every(l => l.trim().startsWith('>'))) {
       return (
-        <blockquote key={i} className="border-l-4 border-gray-300 pl-4 italic text-gray-500 text-sm">
-          {lines.map((l, j) => <p key={j}>{renderInline(l.replace(/^>\s*/, ''))}</p>)}
-        </blockquote>
+        <p key={i} className="italic text-gray-400 text-sm mt-6">
+          {lines.map(l => l.replace(/^>\s*/, '')).join(' ')}
+        </p>
       );
     }
 
     // Markdown heading: ## Title or ### Title
     if (/^#{1,6}\s/.test(lines[0])) {
+      const title = lines[0].replace(/^#{1,6}\s+/, '').replace(/^\d+\.\s+/, '');
       return (
-        <h3 key={i} className="text-base font-semibold text-gray-900 mt-5 mb-1">
-          {renderInline(lines[0].replace(/^#{1,6}\s+/, ''))}
+        <h3 key={i} className="text-base font-semibold text-gray-900 mt-8">
+          {renderInline(title)}
         </h3>
       );
     }
 
     // Bold-only line used as a section heading (e.g. **Meeting Overview**)
     if (/^\*\*[^*]+\*\*:?$/.test(lines[0].trim())) {
+      const title = lines[0].trim().replace(/^\*\*|\*\*:?$/g, '').replace(/^\d+\.\s+/, '');
       return (
-        <h3 key={i} className="text-base font-semibold text-gray-900 mt-5 mb-1">
-          {lines[0].trim().replace(/^\*\*|\*\*:?$/g, '')}
+        <h3 key={i} className="text-base font-semibold text-gray-900 mt-8">
+          {title}
         </h3>
       );
     }
@@ -88,50 +90,75 @@ function renderSummary(text: string) {
     // Numbered section heading like "1. Meeting Overview" (no sub-items)
     if (lines.length === 1 && /^\d+\.\s+[A-Z]/.test(lines[0])) {
       return (
-        <h3 key={i} className="text-base font-semibold text-gray-900 mt-5 mb-1">
+        <h3 key={i} className="text-base font-semibold text-gray-900 mt-8">
           {renderInline(lines[0].replace(/^\d+\.\s+/, ''))}
         </h3>
       );
     }
 
-    // Bullet list
-    if (lines.every(l => /^[-*•]\s/.test(l.trim()))) {
+    // Bullet list — top-level bullets with dot, indented lines as sub-bullets
+    if (lines.every(l => /^[-*•]\s/.test(l.trim()) || /^\s+[-*•]\s/.test(l))) {
       return (
-        <ul key={i} className="list-disc pl-5 space-y-1 text-gray-700">
-          {lines.map((line, j) => (
-            <li key={j}>{renderInline(line.replace(/^[-*•]\s+/, ''))}</li>
-          ))}
-        </ul>
+        <div key={i} className="mt-4 space-y-2">
+          {lines.map((line, j) => {
+            const isSub = /^\s+[-*•]\s/.test(line);
+            return isSub ? (
+              <div key={j} className="flex items-start gap-2 pl-8">
+                <span className="shrink-0 mt-2 w-1 h-1 rounded-full bg-gray-400" />
+                <p className="text-gray-600">{renderInline(line.replace(/^\s+[-*•]\s+/, ''))}</p>
+              </div>
+            ) : (
+              <div key={j} className="flex items-start gap-2">
+                <span className="shrink-0 mt-2 w-1.5 h-1.5 rounded-full bg-gray-500" />
+                <p className="text-gray-700">{renderInline(line.replace(/^[-*•]\s+/, ''))}</p>
+              </div>
+            );
+          })}
+        </div>
       );
     }
 
-    // Numbered list (multi-item)
+    // Numbered list (multi-item) — render as bulleted list
     if (lines.length > 1 && lines.every(l => /^\d+\.\s/.test(l.trim()))) {
       return (
-        <ol key={i} className="list-decimal pl-5 space-y-1 text-gray-700">
+        <div key={i} className="mt-4 space-y-2">
           {lines.map((line, j) => (
-            <li key={j}>{renderInline(line.replace(/^\d+\.\s+/, ''))}</li>
+            <div key={j} className="flex items-start gap-2">
+              <span className="shrink-0 mt-2 w-1.5 h-1.5 rounded-full bg-gray-500" />
+              <p className="text-gray-700">{renderInline(line.replace(/^\d+\.\s+/, ''))}</p>
+            </div>
           ))}
-        </ol>
+        </div>
       );
     }
 
-    // Mixed block with bullets — split into heading + list
-    if (lines.length > 1 && lines.slice(1).some(l => /^[-*•]\s/.test(l.trim()))) {
+    // Mixed block: top-level bullet item + indented sub-bullets
+    if (lines.length > 1 && lines.slice(1).some(l => /^\s+[-*•]\s/.test(l) || /^[-*•]\s/.test(l.trim()))) {
       return (
-        <div key={i}>
-          <p className="text-gray-700 font-medium">{renderInline(lines[0])}</p>
-          <ul className="list-disc pl-5 space-y-1 text-gray-700 mt-1">
-            {lines.slice(1).map((line, j) => (
-              <li key={j}>{renderInline(line.replace(/^[-*•]\s+/, ''))}</li>
-            ))}
-          </ul>
+        <div key={i} className="mt-4 space-y-2">
+          {lines.map((line, j) => {
+            const isSub = /^\s+[-*•]\s/.test(line);
+            const isTop = /^[-*•]\s/.test(line.trim());
+            return isSub ? (
+              <div key={j} className="flex items-start gap-2 pl-8">
+                <span className="shrink-0 mt-2 w-1 h-1 rounded-full bg-gray-400" />
+                <p className="text-gray-600">{renderInline(line.replace(/^\s+[-*•]\s+/, ''))}</p>
+              </div>
+            ) : isTop ? (
+              <div key={j} className="flex items-start gap-2">
+                <span className="shrink-0 mt-2 w-1.5 h-1.5 rounded-full bg-gray-500" />
+                <p className="text-gray-700">{renderInline(line.replace(/^[-*•]\s+/, ''))}</p>
+              </div>
+            ) : (
+              <p key={j} className="text-gray-700 font-medium">{renderInline(line)}</p>
+            );
+          })}
         </div>
       );
     }
 
     return (
-      <p key={i} className="text-gray-700 leading-relaxed">
+      <p key={i} className="text-gray-700 leading-relaxed mt-4">
         {renderInline(lines.join(' '))}
       </p>
     );
@@ -147,13 +174,13 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
   if (!meeting) notFound();
 
   const label = getCanonicalType(meeting.meeting_type);
-  const subtype = getSubtype(meeting.meeting_type);
+  const subtype = getSubtype(meeting.meeting_type, true);
 
   return (
     <div className="px-6 py-8 max-w-4xl mx-auto">
       <Link
         href="/"
-        className="inline-flex items-center gap-1.5 text-sm text-brand-600 hover:text-brand-700 font-medium mb-6"
+        className="inline-flex items-center gap-1.5 text-sm text-granite hover:text-brand-700 font-medium mb-6"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -163,18 +190,18 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
         <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
-          <div className="space-y-2">
+          <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2">
-              <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${getTypeColor(meeting.meeting_type)}`}>
+              <span className="inline-block px-3 py-1 rounded-full text-sm font-medium text-gunmetal" style={{ backgroundColor: '#EFEFEF' }}>
                 {label}
               </span>
               {subtype && (
-                <span className="inline-block px-2.5 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600">
+                <span className="inline-block px-3 py-1 rounded-full text-sm font-medium text-gunmetal" style={{ backgroundColor: '#EFEFEF' }}>
                   {subtype}
                 </span>
               )}
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-5xl text-gray-900" style={{ fontFamily: 'var(--font-serif)' }}>
               {formatDate(meeting.meeting_date)}
             </h1>
           </div>
@@ -183,7 +210,7 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
               href={meeting.pdf_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-granite text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -193,9 +220,7 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
           )}
         </div>
 
-        <hr className="border-gray-200 mb-6" />
-
-        <div className="space-y-3 text-sm sm:text-base">
+        <div className="text-sm sm:text-base">
           {renderSummary(meeting.summary)}
         </div>
 

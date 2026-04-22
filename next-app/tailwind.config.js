@@ -6,17 +6,30 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['var(--font-sans)', 'sans-serif'],
+        serif: ['var(--font-serif)', 'serif'],
+      },
       colors: {
+        alabaster: '#E6E8E6',
+        dust: '#CED0CE',
+        ash: '#9FB8AD',
+        granite: '#475841',
+        gunmetal: '#3F403F',
         brand: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
+          100: '#E6E8E6',
+          200: '#CED0CE',
+          400: '#9FB8AD',
+          600: '#475841',
+          700: '#3a4835',
+          900: '#3F403F',
         },
       },
     },
   },
+  safelist: [
+    'bg-dust', 'bg-granite',
+    'text-granite', 'text-gunmetal', 'text-white',
+  ],
   plugins: [],
 };
