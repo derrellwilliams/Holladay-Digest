@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback } from 'react';
-import { cleanMeetingType } from '@/lib/meetingColors';
+import { getCanonicalType } from '@/lib/meetingColors';
 
 interface SidebarProps {
   types: string[];
@@ -47,6 +47,18 @@ export default function Sidebar({ types, years, months, selectedType, selectedYe
           <p className="text-sm text-gray-400 italic">No types yet</p>
         ) : (
           <ul className="space-y-1">
+            <li>
+              <button
+                onClick={() => updateParam('type', null)}
+                className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                  !selectedType
+                    ? 'bg-brand-600 text-white font-medium'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                All Meetings
+              </button>
+            </li>
             {types.map((type) => (
               <li key={type}>
                 <button
@@ -57,7 +69,7 @@ export default function Sidebar({ types, years, months, selectedType, selectedYe
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
-                  {cleanMeetingType(type)}
+                  {getCanonicalType(type)}
                 </button>
               </li>
             ))}

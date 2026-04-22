@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Meeting } from '@/lib/db';
-import { getTypeColor, cleanMeetingType } from '@/lib/meetingColors';
+import { getTypeColor, getCanonicalType, getSubtype } from '@/lib/meetingColors';
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return 'Unknown date';
@@ -19,7 +19,8 @@ function getTopics(summary: string): string[] {
       .filter(l => /^[-*•]\s/.test(l.trim()))
       .map(l => l.replace(/^[-*•]\s*/, '').replace(/\*\*(.*?)\*\*/g, '$1').trim())
       .filter(Boolean)
-      .slice(0, 3);
+      .slice(0, 4)
+      .map(t => t.length > 55 ? t.slice(0, 52).trimEnd() + '…' : t);
     if (topics.length > 0) return topics;
   }
 
@@ -28,21 +29,30 @@ function getTopics(summary: string): string[] {
     .split('\n')
     .map(l => l.replace(/^[-*•#>\d.]+\s*/, '').replace(/\*\*(.*?)\*\*/g, '$1').replace(/\|/g, '').trim())
     .filter(l => l.length > 20 && !/^(meeting type|date|time|location|presiding|field|structured summary)/i.test(l))
-    .slice(0, 3);
+    .slice(0, 3)
+    .map(t => t.length > 55 ? t.slice(0, 52).trimEnd() + '…' : t);
 }
 
 export default function MeetingCard({ meeting }: { meeting: Meeting }) {
   const topics = getTopics(meeting.summary);
-  const label = cleanMeetingType(meeting.meeting_type);
+  const label = getCanonicalType(meeting.meeting_type);
+  const subtype = getSubtype(meeting.meeting_type);
 
   return (
     <Link href={`/meetings/${meeting.id}`} className="block group">
       <article className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-brand-600 transition-all duration-200 p-5 h-full flex flex-col gap-3">
-        <div className="flex items-start justify-between gap-2">
-          <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${getTypeColor(meeting.meeting_type)}`}>
-            {label}
-          </span>
-          <span className="text-xs text-gray-400 shrink-0">{formatDate(meeting.meeting_date)}</span>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${getTypeColor(meeting.meeting_type)}`}>
+              {label}
+            </span>
+            {subtype && (
+              <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                {subtype}
+              </span>
+            )}
+          </div>
+          <span className="text-base font-bold text-gray-900">{formatDate(meeting.meeting_date)}</span>
         </div>
         <ul className="flex-1 space-y-1">
           {topics.map((topic, i) => (

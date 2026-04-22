@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getMeeting } from '@/lib/db';
-import { getTypeColor, cleanMeetingType } from '@/lib/meetingColors';
+import { getTypeColor, getCanonicalType, getSubtype } from '@/lib/meetingColors';
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return 'Unknown date';
@@ -146,7 +146,8 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
   const meeting = getMeeting(id);
   if (!meeting) notFound();
 
-  const label = cleanMeetingType(meeting.meeting_type);
+  const label = getCanonicalType(meeting.meeting_type);
+  const subtype = getSubtype(meeting.meeting_type);
 
   return (
     <div className="px-6 py-8 max-w-4xl mx-auto">
@@ -163,9 +164,16 @@ export default async function MeetingDetailPage({ params }: { params: Promise<{ 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
         <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
           <div className="space-y-2">
-            <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${getTypeColor(meeting.meeting_type)}`}>
-              {label}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${getTypeColor(meeting.meeting_type)}`}>
+                {label}
+              </span>
+              {subtype && (
+                <span className="inline-block px-2.5 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600">
+                  {subtype}
+                </span>
+              )}
+            </div>
             <h1 className="text-2xl font-bold text-gray-900">
               {formatDate(meeting.meeting_date)}
             </h1>

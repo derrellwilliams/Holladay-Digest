@@ -27,8 +27,8 @@ export function getMeetings(type?: string, search?: string, year?: string, month
   const params: (string | number)[] = [];
 
   if (type) {
-    query += ' AND meeting_type = ?';
-    params.push(type);
+    query += ' AND meeting_type LIKE ?';
+    params.push(`%${type}%`);
   }
 
   // Dates stored as "Feb 05, 2026" — year is last 4 chars, month is first 3
@@ -42,9 +42,16 @@ export function getMeetings(type?: string, search?: string, year?: string, month
     params.push(`${month}%`);
   }
 
-  query += ' ORDER BY meeting_date DESC, id DESC';
+  query += ' ORDER BY id DESC';
 
   let rows = database.prepare(query).all(...params) as Meeting[];
+
+  // Sort by parsed date descending (dates stored as "Feb 05, 2026")
+  rows.sort((a, b) => {
+    const da = a.meeting_date ? new Date(a.meeting_date).getTime() : 0;
+    const db2 = b.meeting_date ? new Date(b.meeting_date).getTime() : 0;
+    return db2 - da;
+  });
 
   if (search) {
     const q = search.toLowerCase();
@@ -68,7 +75,17 @@ export function getMeeting(id: number): Meeting | null {
 export function getMeetingTypes(): string[] {
   const database = getDb();
   const rows = database.prepare('SELECT DISTINCT meeting_type FROM meeting_summaries ORDER BY meeting_type').all() as { meeting_type: string }[];
-  return rows.map((r) => r.meeting_type);
+  const seen = new Set<string>();
+  for (const { meeting_type } of rows) {
+    const t = meeting_type.toLowerCase();
+    if (t.includes('city council')) seen.add('City Council');
+    else if (t.includes('planning commission')) seen.add('Planning Commission');
+    else {
+      const clean = meeting_type.replace(/\(opens in(to)? a? ?new window\)/gi, '').trim();
+      if (clean) seen.add(clean);
+    }
+  }
+  return Array.from(seen).sort();
 }
 
 export function getMeetingYears(): string[] {
