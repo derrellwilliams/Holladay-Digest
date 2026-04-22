@@ -26,6 +26,7 @@ jobs:
       - name: Run scraper
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ONESUITE_URL: ${{ secrets.ONESUITE_URL }}
         run: python scraper.py --recent
 
       - name: Commit and push if DB changed

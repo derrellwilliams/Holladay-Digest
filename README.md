@@ -1,10 +1,10 @@
-# Holladay Digest
+# OneSuite Digest
 
-A tool for browsing Holladay City meeting minutes with AI-generated summaries.
+An open-source tool for browsing city meeting minutes with AI-generated summaries. Works with any city that uses the [OneSuite](https://suiteonemedia.com) government portal platform.
 
-The scraper pulls meeting PDFs from the city's website, extracts the text, and uses Claude to generate structured summaries. A GitHub Actions workflow runs nightly to check for new minutes and automatically update the site. The Next.js app lets you browse, filter, and search those summaries in a clean dashboard.
+Built for Holladay, UT — adaptable to any OneSuite municipality in minutes.
 
-![Holladay Digest Screenshot](screenshot.png)
+![OneSuite Digest Screenshot](screenshot.png)
 
 ## Features
 
@@ -35,6 +35,29 @@ Nightly (midnight MT)
 
 No API calls are made if nothing is new — zero cost on empty runs.
 
+---
+
+## Using this for your city
+
+If your city uses OneSuite, you can run this against their portal with one flag:
+
+```bash
+python3 scraper.py --url https://yourcity.suiteonemedia.com
+```
+
+Or set the environment variable and omit the flag:
+
+```bash
+export ONESUITE_URL="https://yourcity.suiteonemedia.com"
+python3 scraper.py
+```
+
+To find your city's OneSuite URL, look for a link to "City Council Minutes" or "Meeting Minutes" on your city's website — it will redirect to a `suiteonemedia.com` subdomain.
+
+> **Note:** Some cities only publish agendas, not minutes PDFs. The scraper handles this gracefully — it skips any meeting row that doesn't have a minutes link.
+
+---
+
 ## Setup
 
 ### 1. Scraper (local / initial population)
@@ -51,12 +74,12 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 
 Run the full historical scrape (2020 onwards):
 ```bash
-python3 scraper.py
+python3 scraper.py --url https://yourcity.suiteonemedia.com
 ```
 
 Or check only the last 90 days:
 ```bash
-python3 scraper.py --recent
+python3 scraper.py --url https://yourcity.suiteonemedia.com --recent
 ```
 
 The scraper uses the database itself to track what's been processed — re-running is safe, no duplicates.
@@ -71,21 +94,29 @@ npm run dev
 
 Visit [http://localhost:3001](http://localhost:3001).
 
-### 3. Automated updates (GitHub Actions)
+### 3. Automated nightly updates (GitHub Actions)
 
-Add your Anthropic API key as a repository secret:
+Add two repository secrets under **Settings → Secrets and variables → Actions**:
 
-**GitHub repo → Settings → Secrets and variables → Actions → New repository secret**
-- Name: `ANTHROPIC_API_KEY`
-- Value: your key
+| Secret | Value |
+|--------|-------|
+| `ANTHROPIC_API_KEY` | Your Anthropic API key |
+| `ONESUITE_URL` | Your city's OneSuite URL (optional — defaults to Holladay) |
 
-The workflow (`.github/workflows/scrape.yml`) runs automatically every night.
-You can also trigger it manually from the **Actions** tab.
+The workflow (`.github/workflows/scrape.yml`) runs automatically every night. Trigger it manually anytime from the **Actions** tab.
+
+### 4. Hosting on Vercel
+
+1. Import the repo into Vercel
+2. Set **Root Directory** to `next-app`
+3. Deploy — Vercel will auto-redeploy whenever the scraper commits a DB update
+
+---
 
 ## Project Structure
 
 ```
-HolladayHub/
+/
 ├── scraper.py                    # Scrapes PDFs, summarizes with Claude, saves to SQLite
 ├── meeting_summaries.db          # SQLite database (committed to repo)
 ├── pdfs/                         # Downloaded PDFs (git-ignored, transient)
@@ -100,10 +131,10 @@ HolladayHub/
     └── lib/
         ├── db.ts                     # SQLite queries
         ├── meetingColors.ts          # Type labels
-        └── utils.ts                  # Shared utilities (formatDate)
+        └── utils.ts                  # Shared utilities
 ```
 
 ## Notes
 
-- Only City Council and Planning Commission meetings have minutes PDFs on the city website. Other meeting types (Arts Council, Tree Committee, etc.) only publish agendas.
+- Tested against Holladay, UT (`holladayut.suiteonemedia.com`). Other OneSuite instances should work but are not guaranteed — the page structure may vary slightly.
 - Node.js 20.x is required (pinned in `package.json`) for `better-sqlite3` compatibility on Vercel.

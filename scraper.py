@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Holladay City Meeting Minutes Scraper
-Scrapes meeting minutes PDFs from holladayut.suiteonemedia.com,
+OneSuite Meeting Minutes Scraper
+Scrapes meeting minutes PDFs from any OneSuite-powered city portal,
 extracts text, summarizes via Claude, and saves to SQLite.
 """
 
@@ -31,7 +31,7 @@ if _env_path.exists():
                 os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
 
 # ── Config ─────────────────────────────────────────────────────────────────────
-BASE_URL = "https://holladayut.suiteonemedia.com"
+DEFAULT_BASE_URL = "https://holladayut.suiteonemedia.com"
 DB_FILE = Path("meeting_summaries.db")
 PDF_DIR = Path("pdfs")
 HEADERS = {
@@ -42,7 +42,6 @@ HEADERS = {
     ),
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.5",
-    "Referer": BASE_URL,
 }
 
 
@@ -68,14 +67,15 @@ def load_processed(conn: sqlite3.Connection) -> set:
 
 
 # ── Scraping ───────────────────────────────────────────────────────────────────
-def fetch_meetings_page(session: requests.Session, date_from: str, date_to: str) -> Optional[BeautifulSoup]:
+def fetch_meetings_page(session: requests.Session, date_from: str, date_to: str, base_url: str) -> Optional[BeautifulSoup]:
     """
     Fetch the main page with a date-range filter.
     The site accepts dateFrom / dateTo as GET params (MM/DD/YYYY).
     """
     params = {"dateFrom": date_from, "dateTo": date_to}
+    headers = {**HEADERS, "Referer": base_url}
     try:
-        resp = session.get(BASE_URL + "/", headers=HEADERS, params=params, timeout=30)
+        resp = session.get(base_url + "/", headers=headers, params=params, timeout=30)
         resp.raise_for_status()
         return BeautifulSoup(resp.text, "html.parser")
     except requests.RequestException as e:
@@ -83,7 +83,7 @@ def fetch_meetings_page(session: requests.Session, date_from: str, date_to: str)
         return None
 
 
-def parse_meeting_rows(soup: BeautifulSoup) -> list[dict]:
+def parse_meeting_rows(soup: BeautifulSoup, base_url: str) -> list[dict]:
     """
     Parse the eventTable rows.
 
@@ -124,7 +124,7 @@ def parse_meeting_rows(soup: BeautifulSoup) -> list[dict]:
             if not minutes_link:
                 continue  # no minutes available for this meeting
 
-            minutes_url = urljoin(BASE_URL, minutes_link["href"])
+            minutes_url = urljoin(base_url, minutes_link["href"])
             results.append({
                 "url": minutes_url,
                 "meeting_type": meeting_type,
@@ -134,7 +134,7 @@ def parse_meeting_rows(soup: BeautifulSoup) -> list[dict]:
     return results
 
 
-def scrape_all_minutes(session: requests.Session, recent: bool = False) -> list[dict]:
+def scrape_all_minutes(session: requests.Session, base_url: str, recent: bool = False) -> list[dict]:
     """
     Fetch meetings across multiple date windows.
     If recent=True, only checks the last 90 days.
@@ -154,9 +154,9 @@ def scrape_all_minutes(session: requests.Session, recent: bool = False) -> list[
     print(f"Fetching {len(windows)} date window(s)...")
     for date_from, date_to in windows:
         print(f"  Fetching {date_from} → {date_to}...", end=" ", flush=True)
-        soup = fetch_meetings_page(session, date_from, date_to)
+        soup = fetch_meetings_page(session, date_from, date_to, base_url)
         if soup:
-            rows = parse_meeting_rows(soup)
+            rows = parse_meeting_rows(soup, base_url)
             new = 0
             for item in rows:
                 if item["url"] not in all_links:
@@ -241,11 +241,14 @@ def summarize(client: anthropic.Anthropic, text: str, meeting_type: str, meeting
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 def main() -> None:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Scrape meeting minutes from a OneSuite city portal.")
+    parser.add_argument("--url", default=os.environ.get("ONESUITE_URL", DEFAULT_BASE_URL), help="Base URL of the OneSuite portal (e.g. https://yourcity.suiteonemedia.com)")
     parser.add_argument("--recent", action="store_true", help="Only check the last 90 days")
     args = parser.parse_args()
 
-    print("=== Holladay City Meeting Minutes Scraper ===\n")
+    base_url = args.url.rstrip("/")
+    print(f"=== OneSuite Meeting Minutes Scraper ===")
+    print(f"Portal: {base_url}\n")
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
@@ -260,7 +263,7 @@ def main() -> None:
 
     print(f"Previously processed: {len(processed)} PDFs\n")
 
-    all_links = scrape_all_minutes(session, recent=args.recent)
+    all_links = scrape_all_minutes(session, base_url=base_url, recent=args.recent)
 
     new_links = [item for item in all_links if item["url"] not in processed]
     print(f"New PDFs to process: {len(new_links)}\n")
