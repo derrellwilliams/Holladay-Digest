@@ -1,4 +1,4 @@
-# Holladay Hub
+# Holladay Digest
 
 A tool for browsing Holladay City meeting minutes with AI-generated summaries.
 
