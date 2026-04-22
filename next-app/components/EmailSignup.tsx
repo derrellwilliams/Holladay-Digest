@@ -20,8 +20,8 @@ export default function EmailSignup() {
   };
 
   return (
-    <div className="rounded-2xl px-8 py-7 mb-5" style={{ backgroundColor: '#3F403F' }}>
-      <p className="text-white mb-4 text-2xl" style={{ fontFamily: 'var(--font-serif)' }}>
+    <div className="rounded-2xl px-8 py-7" style={{ backgroundColor: '#3F403F' }}>
+      <p className="text-white mb-4" style={{ fontFamily: 'var(--font-serif)', fontSize: '1.4rem' }}>
         Get meeting notes delivered to your inbox the moment they're ready.
       </p>
 
