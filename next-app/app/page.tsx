@@ -25,7 +25,7 @@ export default async function DashboardPage({
   ]);
 
   return (
-    <div className="min-h-screen flex gap-8 px-6 py-8 max-w-4xl mx-auto">
+    <div className="min-h-screen flex flex-col sm:flex-row gap-8 px-6 py-8 max-w-4xl mx-auto">
       <Suspense>
         <Sidebar
           types={types}

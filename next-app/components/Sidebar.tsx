@@ -58,31 +58,34 @@ export default function Sidebar({ types, years, months, selectedType, selectedYe
   };
 
   return (
-    <aside className="w-56 shrink-0 space-y-3 sticky top-8 self-start">
-      {/* Logo lockup */}
-      <div style={{ backgroundColor: '#475841', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px' }}>
-        <img src="/logo.png" alt="" style={{ height: '28px', width: '28px', objectFit: 'contain' }} />
-        <span style={{ fontFamily: 'var(--font-serif)', fontSize: '28px', color: 'white', whiteSpace: 'nowrap', lineHeight: 1 }}>Holladay Digest</span>
-      </div>
-
-      {/* Search */}
-      <div className="relative">
-        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-          <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+    <aside className="w-full sm:w-56 shrink-0 space-y-3 sm:sticky sm:top-8 sm:self-start">
+      {/* Mobile: logo + search in one row. Desktop: stacked (sm:contents dissolves wrapper) */}
+      <div className="flex items-center gap-3 sm:contents">
+        {/* Logo lockup — shrink-0 so it never stretches */}
+        <div className="shrink-0" style={{ backgroundColor: '#475841', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px' }}>
+          <img src="/logo.png" alt="" style={{ height: '28px', width: '28px', objectFit: 'contain' }} />
+          <span style={{ fontFamily: 'var(--font-serif)', fontSize: '28px', color: 'white', whiteSpace: 'nowrap', lineHeight: 1 }}>Holladay Digest</span>
         </div>
-        <input
-          type="search"
-          defaultValue={searchValue}
-          onChange={(e) => handleSearch(e.target.value)}
-          placeholder="Search"
-          className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-granite focus:border-transparent bg-white"
-        />
+
+        {/* Search — flex-1 on mobile fills remaining row space, full-width on desktop */}
+        <div className="relative flex-1 sm:flex-none sm:w-full">
+          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+            <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            type="search"
+            defaultValue={searchValue}
+            onChange={(e) => handleSearch(e.target.value)}
+            placeholder="Search"
+            className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-granite focus:border-transparent bg-white"
+          />
+        </div>
       </div>
 
-      {/* Meeting Type */}
-      <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '12px 14px' }}>
+      {/* Meeting Type — hidden on mobile */}
+      <div className="hidden sm:block" style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '12px 14px' }}>
         <ul className="space-y-2">
           <li>
             <button
@@ -109,8 +112,8 @@ export default function Sidebar({ types, years, months, selectedType, selectedYe
         </ul>
       </div>
 
-      {/* Year */}
-      <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '12px 14px' }}>
+      {/* Year — hidden on mobile */}
+      <div className="hidden sm:block" style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '12px 14px' }}>
         <select
           value={selectedYear}
           onChange={(e) => updateParam('year', e.target.value || null)}
@@ -124,8 +127,8 @@ export default function Sidebar({ types, years, months, selectedType, selectedYe
         </select>
       </div>
 
-      {/* Month */}
-      <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '12px 14px' }}>
+      {/* Month — hidden on mobile */}
+      <div className="hidden sm:block" style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '12px 14px' }}>
         <select
           value={selectedMonth}
           onChange={(e) => updateParam('month', e.target.value || null)}
