@@ -58,30 +58,27 @@ export default function Sidebar({ types, years, months, selectedType, selectedYe
   };
 
   return (
-    <aside className="w-full sm:w-56 shrink-0 space-y-3 sm:sticky sm:top-8 sm:self-start">
-      {/* Mobile: logo + search in one row. Desktop: stacked (sm:contents dissolves wrapper) */}
-      <div className="flex items-center gap-3 sm:contents">
-        {/* Logo lockup — shrink-0 so it never stretches */}
-        <div className="shrink-0" style={{ backgroundColor: '#475841', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px' }}>
-          <img src="/logo.png" alt="" style={{ height: '28px', width: '28px', objectFit: 'contain' }} />
-          <span style={{ fontFamily: 'var(--font-serif)', fontSize: '28px', color: 'white', whiteSpace: 'nowrap', lineHeight: 1 }}>Holladay Digest</span>
-        </div>
+    <aside className="w-full sm:w-56 shrink-0 flex flex-row items-center gap-3 sm:flex-col sm:items-stretch sm:sticky sm:top-8 sm:self-start">
+      {/* Logo lockup — shrink-0 on mobile so it never stretches */}
+      <div className="shrink-0 sm:shrink" style={{ backgroundColor: '#475841', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px' }}>
+        <img src="/logo.png" alt="" style={{ height: '28px', width: '28px', objectFit: 'contain' }} />
+        <span style={{ fontFamily: 'var(--font-serif)', fontSize: '28px', color: 'white', whiteSpace: 'nowrap', lineHeight: 1 }}>Holladay Digest</span>
+      </div>
 
-        {/* Search — flex-1 on mobile fills remaining row space, full-width on desktop */}
-        <div className="relative flex-1 sm:flex-none sm:w-full">
-          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-            <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          <input
-            type="search"
-            defaultValue={searchValue}
-            onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Search"
-            className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-granite focus:border-transparent bg-white"
-          />
+      {/* Search — fills remaining space on mobile, full-width on desktop */}
+      <div className="relative flex-1 sm:flex-none">
+        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+          <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
         </div>
+        <input
+          type="search"
+          defaultValue={searchValue}
+          onChange={(e) => handleSearch(e.target.value)}
+          placeholder="Search"
+          className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-granite focus:border-transparent bg-white"
+        />
       </div>
 
       {/* Meeting Type — hidden on mobile */}
