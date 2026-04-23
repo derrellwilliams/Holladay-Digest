@@ -158,4 +158,4 @@ The workflow (`.github/workflows/scrape.yml`) runs automatically every night. Tr
 ## Notes
 
 - Tested against Holladay, UT (`holladayut.suiteonemedia.com`). Other OneSuite instances should work but are not guaranteed — the page structure may vary slightly.
-- Node.js 20.x is required (pinned in `package.json`) for `better-sqlite3` compatibility on Vercel.
+- Node.js 22.x is required (pinned in `package.json`) for `better-sqlite3` compatibility on Vercel.
