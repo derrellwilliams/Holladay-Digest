@@ -315,7 +315,7 @@ def send_digest(new_meetings: list[dict], resend_api_key: str) -> None:
 # ── Main ───────────────────────────────────────────────────────────────────────
 def main() -> None:
     parser = argparse.ArgumentParser(description="Scrape meeting minutes from a OneSuite city portal.")
-    parser.add_argument("--url", default=os.environ.get("ONESUITE_URL", DEFAULT_BASE_URL), help="Base URL of the OneSuite portal (e.g. https://yourcity.suiteonemedia.com)")
+    parser.add_argument("--url", default=os.environ.get("ONESUITE_URL") or DEFAULT_BASE_URL, help="Base URL of the OneSuite portal (e.g. https://yourcity.suiteonemedia.com)")
     parser.add_argument("--recent", action="store_true", help="Only check the last 90 days")
     args = parser.parse_args()
 
