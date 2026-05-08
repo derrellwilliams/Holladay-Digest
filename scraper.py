@@ -119,8 +119,11 @@ def parse_meeting_rows(soup: BeautifulSoup, base_url: str) -> list[dict]:
                 # Normalize: "Feb 05, 2026 | 06:00 PM" → "Feb 05, 2026"
                 meeting_date = meeting_date.split("|")[0].strip()
 
-            # Find the minutes link anywhere in this row
+            # Find the minutes link — old format is a direct PDF, new format links to event page
             minutes_link = row.find("a", href=re.compile(r"/event/GetMinutesFile/", re.I))
+            if not minutes_link and len(cells) >= 5:
+                # New format: last column links to event page (/event/?id=NNN)
+                minutes_link = cells[-1].find("a", href=re.compile(r"/event/\?id=", re.I))
             if not minutes_link:
                 continue  # no minutes available for this meeting
 
@@ -200,6 +203,39 @@ def extract_text(pdf_path: Path) -> str:
     except Exception as e:
         print(f"  [WARN] PDF extraction error: {e}")
         return ""
+
+
+def fetch_transcript(session: requests.Session, url: str) -> str:
+    """Fetch transcript text from an OneSuite event page (new minutes format)."""
+    try:
+        resp = session.get(url, headers=HEADERS, timeout=30)
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        print(f"  [WARN] Fetch failed: {e}")
+        return ""
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+
+    # Try known transcript containers
+    transcript = (
+        soup.find("div", class_=re.compile(r"event.transcript", re.I))
+        or soup.find("div", id=re.compile(r"transcript.content", re.I))
+    )
+    if transcript:
+        text = transcript.get_text(separator="\n")
+    else:
+        # Fall back: grab everything after the "Transcript" heading
+        heading = soup.find(lambda tag: tag.name in ("h2", "h3") and "Transcript" in tag.get_text())
+        if heading:
+            parts = [sib.get_text(separator="\n") for sib in heading.find_next_siblings()]
+            text = "\n".join(parts)
+        else:
+            text = soup.get_text(separator="\n")
+
+    # Strip timestamp-only lines (HH:MM:SS or H:MM:SS)
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    filtered = [l for l in lines if not re.match(r"^\d{1,2}:\d{2}:\d{2}$", l)]
+    return "\n".join(filtered)
 
 
 # ── Claude summarization ───────────────────────────────────────────────────────
@@ -361,21 +397,29 @@ def main() -> None:
         print(f"[{i}/{len(new_links)}] {meeting_type} | {meeting_date or 'date unknown'}")
         print(f"  mid={mid}  →  {url}")
 
-        # Download
-        print("  Downloading...", end=" ", flush=True)
-        if not download_pdf(session, url, pdf_path):
-            processed.add(url)
-            continue
-        print("OK")
+        # Download PDF or fetch transcript page
+        if "GetMinutesFile" in url:
+            print("  Downloading...", end=" ", flush=True)
+            if not download_pdf(session, url, pdf_path):
+                processed.add(url)
+                continue
+            print("OK")
 
-        # Extract
-        print("  Extracting text...", end=" ", flush=True)
-        text = extract_text(pdf_path)
-        if not text.strip():
-            print("no text extracted, skipping.")
-            processed.add(url)
-            continue
-        print(f"{len(text):,} chars")
+            print("  Extracting text...", end=" ", flush=True)
+            text = extract_text(pdf_path)
+            if not text.strip():
+                print("no text extracted, skipping.")
+                processed.add(url)
+                continue
+            print(f"{len(text):,} chars")
+        else:
+            print("  Fetching transcript...", end=" ", flush=True)
+            text = fetch_transcript(session, url)
+            if not text.strip():
+                print("no transcript found, skipping.")
+                processed.add(url)
+                continue
+            print(f"{len(text):,} chars")
 
         # Summarize
         print("  Summarizing with Claude...", end=" ", flush=True)
