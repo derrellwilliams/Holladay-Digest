@@ -275,6 +275,107 @@ def summarize(client: anthropic.Anthropic, text: str, meeting_type: str, meeting
     return msg.content[0].text
 
 
+# ── Markdown → HTML (email-safe inline styles) ────────────────────────────────
+def _inline_md(text: str) -> str:
+    """Convert inline markdown (bold, italic) to HTML."""
+    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+    text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
+    return text
+
+
+def _render_table(table_lines: list[str]) -> str:
+    rows = []
+    for line in table_lines:
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        rows.append(cells)
+
+    if len(rows) < 2:
+        return ""
+
+    header_cells = rows[0]
+    data_rows = rows[2:]  # rows[1] is the --- separator row
+
+    th_style = "padding:8px 12px;text-align:left;font-size:13px;font-weight:600;color:#374151;border-bottom:2px solid #e5e7eb;white-space:nowrap;"
+    td_style = "padding:8px 12px;font-size:14px;color:#374151;border-bottom:1px solid #f3f4f6;vertical-align:top;"
+
+    thead = "<tr>" + "".join(f'<th style="{th_style}">{_inline_md(c)}</th>' for c in header_cells) + "</tr>"
+    tbody = "".join(
+        "<tr>" + "".join(f'<td style="{td_style}">{_inline_md(c)}</td>' for c in row) + "</tr>"
+        for row in data_rows
+    )
+    table_style = "width:100%;border-collapse:collapse;margin:16px 0;"
+    return f'<table style="{table_style}"><thead>{thead}</thead><tbody>{tbody}</tbody></table>'
+
+
+def markdown_to_html(text: str) -> str:
+    """Convert Claude's markdown summary to email-safe HTML with inline styles."""
+    lines = text.split("\n")
+    parts = []
+    i = 0
+
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+
+        if not stripped:
+            i += 1
+            continue
+
+        # Horizontal rule
+        if re.match(r'^-{3,}$', stripped):
+            parts.append('<hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">')
+            i += 1
+            continue
+
+        # H1 (# Title) — skip, we render meeting date as the heading
+        if stripped.startswith("# ") and not stripped.startswith("## "):
+            i += 1
+            continue
+
+        # H2 (## 1. Section)
+        if stripped.startswith("## "):
+            content = _inline_md(stripped[3:])
+            parts.append(
+                f'<h2 style="margin:28px 0 10px 0;font-size:13px;font-weight:700;'
+                f'letter-spacing:0.08em;text-transform:uppercase;color:#475841;'
+                f'font-family:\'Helvetica Neue\',Arial,sans-serif;">{content}</h2>'
+            )
+            i += 1
+            continue
+
+        # Table block — collect consecutive | lines
+        if stripped.startswith("|"):
+            table_lines = []
+            while i < len(lines) and lines[i].strip().startswith("|"):
+                table_lines.append(lines[i])
+                i += 1
+            parts.append(_render_table(table_lines))
+            continue
+
+        # Bullet list — collect consecutive - items
+        if stripped.startswith("- ") or stripped.startswith("* "):
+            items = []
+            while i < len(lines) and (lines[i].strip().startswith("- ") or lines[i].strip().startswith("* ")):
+                item_text = _inline_md(lines[i].strip()[2:])
+                items.append(
+                    f'<li style="margin:0 0 6px 0;color:#374151;font-size:15px;line-height:1.6;">{item_text}</li>'
+                )
+                i += 1
+            parts.append(
+                '<ul style="margin:0 0 16px 0;padding-left:20px;">' + "".join(items) + "</ul>"
+            )
+            continue
+
+        # Regular paragraph
+        parts.append(
+            f'<p style="margin:0 0 14px 0;color:#374151;font-size:15px;line-height:1.7;">'
+            f'{_inline_md(stripped)}</p>'
+        )
+        i += 1
+
+    return "\n".join(parts)
+
+
 # ── Email digest ───────────────────────────────────────────────────────────────
 def send_digest(new_meetings: list[dict], resend_api_key: str) -> None:
     """Send an email digest to all subscribers for each new meeting."""
@@ -304,35 +405,29 @@ def send_digest(new_meetings: list[dict], resend_api_key: str) -> None:
         meeting_date = meeting["meeting_date"] or "Unknown date"
         summary = meeting["summary"]
 
-        # Convert plain summary to simple HTML paragraphs
-        paragraphs = "".join(
-            f"<p style='margin:0 0 12px 0;color:#374151;line-height:1.7;font-size:15px;'>{line}</p>"
-            for line in summary.split("\n") if line.strip()
-        )
+        body_html = markdown_to_html(summary)
 
-        html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="utf-8"></head>
-        <body style="margin:0;padding:0;background:#E6E8E6;font-family:'Helvetica Neue',Arial,sans-serif;">
-          <div style="max-width:600px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;">
-            <div style="background:#475841;padding:24px 32px;">
-              <p style="margin:0;color:white;font-size:28px;font-family:Georgia,serif;">Holladay Digest</p>
-            </div>
-            <div style="padding:32px;">
-              <div style="margin-bottom:16px;">
-                <span style="background:#EFEFEF;color:#3F403F;font-size:13px;font-weight:600;padding:4px 12px;border-radius:999px;">{meeting_type}</span>
-              </div>
-              <h1 style="margin:0 0 24px 0;font-size:36px;color:#111827;font-family:Georgia,serif;">{meeting_date}</h1>
-              {paragraphs}
-            </div>
-            <div style="padding:16px 32px 32px;border-top:1px solid #f3f4f6;">
-              <p style="margin:0;font-size:12px;color:#9ca3af;">You're receiving this because you subscribed to Holladay Digest. <a href="https://resend.com/unsubscribe" style="color:#475841;">Unsubscribe</a></p>
-            </div>
-          </div>
-        </body>
-        </html>
-        """
+        html = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#E6E8E6;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <div style="max-width:600px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+    <div style="background:#475841;padding:24px 32px;">
+      <p style="margin:0;color:white;font-size:26px;font-family:Georgia,serif;letter-spacing:-0.01em;">Holladay Digest</p>
+    </div>
+    <div style="padding:32px 32px 24px;">
+      <div style="margin-bottom:14px;">
+        <span style="background:#EFEFEF;color:#3F403F;font-size:12px;font-weight:600;padding:4px 12px;border-radius:999px;letter-spacing:0.02em;">{meeting_type}</span>
+      </div>
+      <h1 style="margin:0 0 28px 0;font-size:32px;color:#111827;font-family:Georgia,serif;line-height:1.2;">{meeting_date}</h1>
+      {body_html}
+    </div>
+    <div style="padding:16px 32px 28px;border-top:1px solid #f3f4f6;">
+      <p style="margin:0;font-size:12px;color:#9ca3af;">You're receiving this because you subscribed to Holladay Digest. <a href="https://resend.com/unsubscribe" style="color:#475841;text-decoration:none;">Unsubscribe</a></p>
+    </div>
+  </div>
+</body>
+</html>"""
 
         payload = {
             "from": "hi@matthewdwilliams.com",
