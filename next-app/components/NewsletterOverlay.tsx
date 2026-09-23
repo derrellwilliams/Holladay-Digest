@@ -41,7 +41,7 @@ export default function NewsletterOverlay({ origin, onClose }: { origin: DOMRect
           Get the Digest
         </motion.h2>
 
-        <motion.p variants={riseItem} className="font-mono text-base md:text-lg text-paper/80 mt-6 max-w-xl">
+        <motion.p variants={riseItem} className="font-mono text-base md:text-lg text-paper/80 mt-6">
           Meeting notes delivered to your inbox the moment they&rsquo;re ready.
         </motion.p>
 
