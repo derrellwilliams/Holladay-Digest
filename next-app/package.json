@@ -9,7 +9,9 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@paper-design/shaders-react": "^0.0.81",
     "better-sqlite3": "^9.4.3",
+    "motion": "^13.4.2",
     "next": "^15.5.15",
     "react": "^18",
     "react-dom": "^18",

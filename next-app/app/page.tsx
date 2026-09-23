@@ -1,61 +1,45 @@
-import { Suspense } from 'react';
-import { getMeetings, getMeetingTypes, getMeetingYears, getMeetingMonths } from '@/lib/db';
-import Sidebar from '@/components/Sidebar';
-import MeetingCard from '@/components/MeetingCard';
-import EmailSignup from '@/components/EmailSignup';
-
-interface SearchParams {
-  type?: string;
-  search?: string;
-  year?: string;
-  month?: string;
-}
+import { getMeetings, getMeeting } from '@/lib/db';
+import { getCanonicalType } from '@/lib/meetingColors';
+import { formatDotDate } from '@/lib/utils';
+import Masthead from '@/components/Masthead';
+import MeetingList from '@/components/MeetingList';
+import HalftoneHero from '@/components/HalftoneHero';
+import MeetingPanel from '@/components/MeetingPanel';
+import MeetingSummary from '@/components/MeetingSummary';
 
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<SearchParams>;
+  searchParams: Promise<{ m?: string }>;
 }) {
-  const { type, search, year, month } = await searchParams;
+  const { m } = await searchParams;
 
-  const meetings = getMeetings(type, search, year, month);
-  const types = getMeetingTypes();
-  const years = getMeetingYears();
-  const months = getMeetingMonths();
+  const meetings = getMeetings().map((meeting) => ({
+    id: meeting.id,
+    date: formatDotDate(meeting.meeting_date),
+    type: getCanonicalType(meeting.meeting_type),
+  }));
+
+  const id = m ? parseInt(m, 10) : NaN;
+  const selected = id > 0 ? getMeeting(id) : null;
 
   return (
-    <div className="min-h-screen flex flex-col sm:flex-row gap-8 px-6 py-8 max-w-4xl mx-auto">
-      <Suspense>
-        <Sidebar
-          types={types}
-          years={years}
-          months={months}
-          selectedType={type ?? ''}
-          selectedYear={year ?? ''}
-          selectedMonth={month ?? ''}
-          searchValue={search ?? ''}
-        />
-      </Suspense>
-
-      <div className="flex-1 min-w-0">
-        {meetings.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">No meetings found</h3>
-            <p className="text-gray-500 max-w-sm">
-              {type || search || year || month
-                ? 'Try adjusting your filters or search query.'
-                : 'Run the scraper to populate the database with meeting summaries.'}
-            </p>
+    <>
+      <div className="flex flex-col md:h-dvh md:overflow-hidden">
+        <Masthead />
+        <div className="flex flex-col-reverse md:flex-row flex-1 min-h-0 md:pr-4 md:pb-9">
+          <div className="md:w-[324px] shrink-0 md:h-full">
+            <MeetingList meetings={meetings} activeId={selected?.id ?? null} />
           </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-5">
-            <EmailSignup />
-            {meetings.map((meeting) => (
-              <MeetingCard key={meeting.id} meeting={meeting} search={search ?? ''} />
-            ))}
+          <div className="flex-1 min-w-0 px-4 md:px-0">
+            <HalftoneHero />
           </div>
-        )}
+        </div>
       </div>
-    </div>
+
+      <MeetingPanel meetingId={selected?.id ?? null}>
+        {selected && <MeetingSummary meeting={selected} />}
+      </MeetingPanel>
+    </>
   );
 }

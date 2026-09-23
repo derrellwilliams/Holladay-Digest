@@ -2,13 +2,67 @@
 @tailwind components;
 @tailwind utilities;
 
-input[type="search"]::-webkit-search-cancel-button {
-  filter: brightness(0);
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-.meeting-card {
-  box-shadow: 0 4px 24px 0 rgba(0,0,0,0.07), 0 1.5px 6px 0 rgba(0,0,0,0.04);
+/* First-visit intro — [data-intro] is set once per session by the inline script in layout */
+@keyframes letter-rise {
+  from { transform: translateY(105%); }
 }
-.meeting-card:hover {
-  box-shadow: 0 12px 40px 0 rgba(0,0,0,0.13), 0 3px 10px 0 rgba(0,0,0,0.07);
+@keyframes row-rise {
+  from { opacity: 0; transform: translateY(8px); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+
+[data-intro] .intro-letter {
+  animation: letter-rise 600ms var(--ease-out) both;
+  animation-delay: calc(var(--i) * 30ms);
+}
+[data-intro] .intro-row {
+  animation: row-rise 400ms var(--ease-out) both;
+  animation-delay: calc(300ms + var(--i) * 30ms);
+}
+[data-intro] .intro-fade {
+  animation: fade-in 800ms var(--ease-out) 200ms both;
+}
+
+/* Soft fade at the bottom of the scrolling date list */
+.list-fade {
+  mask-image: linear-gradient(to bottom, black calc(100% - 64px), transparent);
+}
+
+@media (hover: hover) {
+  .list-link:not([aria-current]):hover { color: #EEF2EA; }
+}
+
+.press {
+  transition-property: transform, color, background-color, border-color, opacity;
+  transition-duration: 160ms;
+  transition-timing-function: var(--ease-out);
+}
+.press:active {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-intro] .intro-letter,
+  [data-intro] .intro-row {
+    animation: none;
+  }
+  .press:active {
+    transform: none;
+  }
+}
+
+/* Dim the hero while a meeting panel is open */
+.hero {
+  transition: opacity 450ms var(--ease-drawer);
+}
+body:has(#meeting-panel) .hero {
+  opacity: 0.6;
 }

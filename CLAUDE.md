@@ -49,18 +49,23 @@ For any non-trivial change, state success criteria first:
 ### Stack
 - **Next.js 15** App Router — server components by default, `'use client'` only when needed
 - **better-sqlite3** — synchronous, call directly in server components (no `Promise.resolve()` wrapping)
-- **Tailwind CSS** with custom tokens: `alabaster`, `dust`, `ash`, `granite`, `gunmetal`
-- **Fonts**: Instrument Serif (`var(--font-serif)`) + Instrument Sans (`var(--font-sans)`) via `next/font/google`
+- **Tailwind CSS** with custom tokens: `forest`, `pine`, `lime`, `mint`, `soot`, `paper`
+- **Fonts**: Roboto Condensed (`font-display`), Roboto Mono (`font-mono`), Roboto (`font-sans`) via `next/font/google`
+- **motion** for spring/exit/gesture animation; plain CSS transitions for everything else
+- **@paper-design/shaders-react** `HalftoneDots` renders the hero photo (`public/holladay.jpg`)
 - **Node 20.x** pinned in `package.json` `engines` field — required for better-sqlite3 on Vercel
 
 ### Architecture
 - `lib/db.ts` — all SQLite queries, exports `getMeetings`, `getMeeting`, `getMeetingTypes`, `getMeetingYears`, `getMeetingMonths`
 - `lib/meetingColors.ts` — `getCanonicalType`, `getSubtype`
-- `lib/utils.ts` — `formatDate(dateStr, long?)` shared across components
-- `components/Sidebar.tsx` — client component, handles all filter + search routing via URL params, 300ms debounced search
-- `components/MeetingCard.tsx` — server-safe, search highlighting via `<mark>`
-- `app/page.tsx` — server component, calls db functions directly
-- `app/meetings/[id]/page.tsx` — server component, `renderSummary` parses markdown-like AI summaries
+- `lib/utils.ts` — `formatDotDate` (9·19·26), `formatLongDate` (September 22nd, 2026)
+- `app/page.tsx` — server component; reads `?m=<id>` and renders the list, hero, and `MeetingPanel`
+- `app/actions.ts` — `searchMeetings` server action used by the search overlay
+- `app/meetings/[id]/page.tsx` — redirects to `/?m=<id>`
+- `components/MeetingPanel.tsx` — client, slide-in panel (AnimatePresence, swipe to dismiss on mobile)
+- `components/MeetingSummary.tsx` — server, `renderSummary` parses markdown-like AI summaries
+- `components/HalftoneHero.tsx` — shader image + Newsletter/Search buttons, owns overlay state, ⌘K and `/` open search
+- `components/Overlay.tsx` — shared full-screen dialog: clip-path grows from the trigger button, `inert` page, focus restore
 
 ### Deployment
 - Vercel, root directory set to `next-app`
@@ -68,7 +73,7 @@ For any non-trivial change, state success criteria first:
 - Remote: `https://github.com/derrellwilliams/Holladay-Digest.git`
 
 ### Conventions
-- Badges: hardcoded `style={{ backgroundColor: '#EFEFEF' }}` — not dynamic Tailwind classes
-- Card shadows: defined in `globals.css` via `.meeting-card` and `.meeting-card:hover`
-- Mobile: sidebar is `flex-row` (logo + search only), desktop: `flex-col` with all filters
+- Motion follows emilkowalski/skills: only transform/opacity/clip-path/filter, no ease-in, keyboard-opened overlays don't animate, `prefers-reduced-motion` falls back to fades
+- Easing tokens live in `globals.css` (`--ease-out`, `--ease-in-out`, `--ease-drawer`); `.press` gives buttons the scale(0.97) press
+- Mobile (< md): stacked headline → hero → list; meeting panel is full screen
 - No `Co-Authored-By: Claude` in commit messages

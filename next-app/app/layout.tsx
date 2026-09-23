@@ -1,17 +1,24 @@
 import type { Metadata } from 'next';
-import { Instrument_Serif, Instrument_Sans } from 'next/font/google';
+import { Roboto, Roboto_Condensed, Roboto_Mono } from 'next/font/google';
 import './globals.css';
 
-const instrumentSerif = Instrument_Serif({
+const roboto = Roboto({
   subsets: ['latin'],
   weight: '400',
-  variable: '--font-serif',
+  variable: '--font-sans',
   display: 'swap',
 });
 
-const instrumentSans = Instrument_Sans({
+const robotoCondensed = Roboto_Condensed({
   subsets: ['latin'],
-  variable: '--font-sans',
+  weight: ['400', '700'],
+  variable: '--font-display',
+  display: 'swap',
+});
+
+const robotoMono = Roboto_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
   display: 'swap',
 });
 
@@ -26,9 +33,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={`${instrumentSans.variable} ${instrumentSerif.variable} font-sans bg-alabaster text-gunmetal`}>
-        <main className="max-w-7xl mx-auto">{children}</main>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(!sessionStorage.getItem('intro')){document.documentElement.setAttribute('data-intro','');sessionStorage.setItem('intro','1')}}catch(e){}`,
+          }}
+        />
+      </head>
+      <body className={`${roboto.variable} ${robotoCondensed.variable} ${robotoMono.variable} font-sans bg-forest text-lime antialiased`}>
+        <main id="page">{children}</main>
       </body>
     </html>
   );

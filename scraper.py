@@ -276,6 +276,13 @@ def summarize(client: anthropic.Anthropic, text: str, meeting_type: str, meeting
 
 
 # ── Markdown → HTML (email-safe inline styles) ────────────────────────────────
+# Matches the site: Roboto Condensed / Roboto Mono / Roboto, with fallbacks for clients that block web fonts
+EMAIL_DISPLAY = "'Roboto Condensed','Arial Narrow',Arial,sans-serif"
+EMAIL_MONO = "'Roboto Mono',Menlo,Consolas,monospace"
+EMAIL_SANS = "Roboto,'Helvetica Neue',Arial,sans-serif"
+# Static capture of the site's halftone hero (next-app/public/email-halftone.jpg), served by the deployed site
+EMAIL_HALFTONE_URL = "https://holladay-digest-five.vercel.app/email-halftone.jpg"
+
 def _inline_md(text: str) -> str:
     """Convert inline markdown (bold, italic) to HTML."""
     text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
@@ -295,8 +302,8 @@ def _render_table(table_lines: list[str]) -> str:
     header_cells = rows[0]
     data_rows = rows[2:]  # rows[1] is the --- separator row
 
-    th_style = "padding:8px 12px;text-align:left;font-size:13px;font-weight:600;color:#374151;border-bottom:2px solid #e5e7eb;white-space:nowrap;"
-    td_style = "padding:8px 12px;font-size:14px;color:#374151;border-bottom:1px solid #f3f4f6;vertical-align:top;"
+    th_style = f"padding:8px 12px;text-align:left;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#8FFF7A;border-bottom:1px solid #2E4A24;white-space:nowrap;font-family:{EMAIL_MONO};"
+    td_style = f"padding:8px 12px;font-size:14px;line-height:1.5;color:#EEF2EA;border-bottom:1px solid #1F3318;vertical-align:top;font-family:{EMAIL_SANS};"
 
     thead = "<tr>" + "".join(f'<th style="{th_style}">{_inline_md(c)}</th>' for c in header_cells) + "</tr>"
     tbody = "".join(
@@ -323,7 +330,7 @@ def markdown_to_html(text: str) -> str:
 
         # Horizontal rule
         if re.match(r'^-{3,}$', stripped):
-            parts.append('<hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">')
+            parts.append('<hr style="border:none;border-top:1px solid #1F3318;margin:24px 0;">')
             i += 1
             continue
 
@@ -336,9 +343,8 @@ def markdown_to_html(text: str) -> str:
         if stripped.startswith("## "):
             content = _inline_md(stripped[3:])
             parts.append(
-                f'<h2 style="margin:28px 0 10px 0;font-size:13px;font-weight:700;'
-                f'letter-spacing:0.08em;text-transform:uppercase;color:#475841;'
-                f'font-family:\'Helvetica Neue\',Arial,sans-serif;">{content}</h2>'
+                f'<h2 style="margin:32px 0 8px 0;font-size:20px;font-weight:700;line-height:1.2;'
+                f'color:#EEF2EA;font-family:{EMAIL_DISPLAY};">{content}</h2>'
             )
             i += 1
             continue
@@ -358,17 +364,26 @@ def markdown_to_html(text: str) -> str:
             while i < len(lines) and (lines[i].strip().startswith("- ") or lines[i].strip().startswith("* ")):
                 item_text = _inline_md(lines[i].strip()[2:])
                 items.append(
-                    f'<li style="margin:0 0 6px 0;color:#374151;font-size:15px;line-height:1.6;">{item_text}</li>'
+                    f'<li style="margin:0 0 8px 0;color:#EEF2EA;font-size:15px;line-height:1.7;font-family:{EMAIL_SANS};">{item_text}</li>'
                 )
                 i += 1
             parts.append(
-                '<ul style="margin:0 0 16px 0;padding-left:20px;">' + "".join(items) + "</ul>"
+                '<ul style="margin:0 0 16px 0;padding-left:18px;color:#8FFF7A;">' + "".join(items) + "</ul>"
             )
+            continue
+
+        # Blockquote — muted italic note, like the site
+        if stripped.startswith(">"):
+            parts.append(
+                f'<p style="margin:0 0 14px 0;color:#EEF2EA;opacity:0.55;font-style:italic;font-size:13px;line-height:1.6;font-family:{EMAIL_SANS};">'
+                f'{_inline_md(stripped.lstrip("> ").strip())}</p>'
+            )
+            i += 1
             continue
 
         # Regular paragraph
         parts.append(
-            f'<p style="margin:0 0 14px 0;color:#374151;font-size:15px;line-height:1.7;">'
+            f'<p style="margin:0 0 14px 0;color:#EEF2EA;font-size:15px;line-height:1.7;font-family:{EMAIL_SANS};">'
             f'{_inline_md(stripped)}</p>'
         )
         i += 1
@@ -377,6 +392,76 @@ def markdown_to_html(text: str) -> str:
 
 
 # ── Email digest ───────────────────────────────────────────────────────────────
+def _long_date(date_str: Optional[str]) -> str:
+    """'Feb 05, 2026' → 'February 5th, 2026' (matches the site's panel header)."""
+    if not date_str:
+        return "Unknown date"
+    try:
+        d = datetime.strptime(date_str, "%b %d, %Y")
+    except ValueError:
+        return date_str
+    day = d.day
+    suffix = "th" if 11 <= day <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+    return f"{d.strftime('%B')} {day}{suffix}, {d.year}"
+
+
+def build_digest_html(meeting: dict) -> str:
+    """Dark green email matching the Holladay Digest site."""
+    meeting_type = meeting["meeting_type"]
+    body_html = markdown_to_html(meeting["summary"])
+    pdf_button = ""
+    if meeting.get("pdf_url"):
+        pdf_button = f"""
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0 0 0;">
+            <tr><td style="border:1px solid #8FFF7A;border-radius:8px;">
+              <a href="{meeting['pdf_url']}" style="display:inline-block;padding:12px 32px;font-family:{EMAIL_MONO};font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#8FFF7A;text-decoration:none;">Download PDF</a>
+            </td></tr>
+          </table>"""
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Roboto+Mono:wght@400;700&family=Roboto&display=swap" rel="stylesheet">
+<style>
+  @media (max-width: 620px) {{
+    .hd {{ font-size: 11.6vw !important; }}
+    .px {{ padding-left: 20px !important; padding-right: 20px !important; }}
+    .frame {{ padding: 72px 12px 0 !important; }}
+  }}
+</style>
+</head>
+<body style="margin:0;padding:0;background:#16290F;" bgcolor="#16290F">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#16290F" style="background:#16290F;">
+    <tr><td align="center" style="padding:32px 0 40px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;">
+        <tr><td class="px" style="padding:0 24px 28px;">
+          <p class="hd" style="margin:0;font-family:{EMAIL_DISPLAY};font-weight:700;font-size:78px;line-height:0.85;letter-spacing:-0.01em;text-transform:uppercase;color:#8FFF7A;">Holladay Digest</p>
+        </td></tr>
+        <tr><td class="frame" background="{EMAIL_HALFTONE_URL}" bgcolor="#16290F" style="background-color:#16290F;background-image:url('{EMAIL_HALFTONE_URL}');background-repeat:no-repeat;background-position:center top;background-size:100% auto;padding:120px 28px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr><td bgcolor="#0F1A0D" class="px" style="background:#0F1A0D;padding:36px 40px 40px;">
+          <p style="margin:0;font-family:{EMAIL_MONO};font-size:13px;color:#EEF2EA;">{_long_date(meeting.get("meeting_date"))}</p>
+          <h1 style="margin:4px 0 0 0;font-family:{EMAIL_DISPLAY};font-weight:400;font-size:32px;line-height:1.15;color:#EEF2EA;">{meeting_type}</h1>{pdf_button}
+          <div style="margin-top:12px;">
+            {body_html}
+          </div>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td class="px" style="padding:24px 24px 0;">
+          <p style="margin:0;font-family:{EMAIL_MONO};font-size:11px;line-height:1.6;color:#8FFF7A;opacity:0.7;">You're receiving this because you subscribed to Holladay Digest. <a href="https://resend.com/unsubscribe" style="color:#8FFF7A;text-decoration:underline;">Unsubscribe</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+
 def send_digest(new_meetings: list[dict], resend_api_key: str) -> None:
     """Send an email digest to all subscribers for each new meeting."""
     audience_id = "f0e9aae2-f00b-4af6-b995-34ad472d3429"
@@ -403,31 +488,7 @@ def send_digest(new_meetings: list[dict], resend_api_key: str) -> None:
     for meeting in new_meetings:
         meeting_type = meeting["meeting_type"]
         meeting_date = meeting["meeting_date"] or "Unknown date"
-        summary = meeting["summary"]
-
-        body_html = markdown_to_html(summary)
-
-        html = f"""<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#E6E8E6;font-family:'Helvetica Neue',Arial,sans-serif;">
-  <div style="max-width:600px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-    <div style="background:#475841;padding:24px 32px;">
-      <p style="margin:0;color:white;font-size:26px;font-family:Georgia,serif;letter-spacing:-0.01em;">Holladay Digest</p>
-    </div>
-    <div style="padding:32px 32px 24px;">
-      <div style="margin-bottom:14px;">
-        <span style="background:#EFEFEF;color:#3F403F;font-size:12px;font-weight:600;padding:4px 12px;border-radius:999px;letter-spacing:0.02em;">{meeting_type}</span>
-      </div>
-      <h1 style="margin:0 0 28px 0;font-size:32px;color:#111827;font-family:Georgia,serif;line-height:1.2;">{meeting_date}</h1>
-      {body_html}
-    </div>
-    <div style="padding:16px 32px 28px;border-top:1px solid #f3f4f6;">
-      <p style="margin:0;font-size:12px;color:#9ca3af;">You're receiving this because you subscribed to Holladay Digest. <a href="https://resend.com/unsubscribe" style="color:#475841;text-decoration:none;">Unsubscribe</a></p>
-    </div>
-  </div>
-</body>
-</html>"""
+        html = build_digest_html(meeting)
 
         payload = {
             "from": "hi@matthewdwilliams.com",
@@ -540,6 +601,7 @@ def main() -> None:
         new_meetings_for_digest.append({
             "meeting_type": meeting_type,
             "meeting_date": meeting_date,
+            "pdf_url": url,
             "summary": summary,
         })
         succeeded += 1

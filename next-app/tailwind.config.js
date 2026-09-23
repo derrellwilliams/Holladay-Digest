@@ -8,28 +8,18 @@ module.exports = {
     extend: {
       fontFamily: {
         sans: ['var(--font-sans)', 'sans-serif'],
-        serif: ['var(--font-serif)', 'serif'],
+        display: ['var(--font-display)', 'sans-serif'],
+        mono: ['var(--font-mono)', 'monospace'],
       },
       colors: {
-        alabaster: '#E6E8E6',
-        dust: '#CED0CE',
-        ash: '#9FB8AD',
-        granite: '#475841',
-        gunmetal: '#3F403F',
-        brand: {
-          100: '#E6E8E6',
-          200: '#CED0CE',
-          400: '#9FB8AD',
-          600: '#475841',
-          700: '#3a4835',
-          900: '#3F403F',
-        },
+        forest: '#16290F',
+        pine: '#0F1A0D',
+        lime: '#8FFF7A',
+        mint: '#AEFF9E',
+        soot: '#2B2B2B',
+        paper: '#EEF2EA',
       },
     },
   },
-  safelist: [
-    'bg-dust', 'bg-granite',
-    'text-granite', 'text-gunmetal', 'text-white',
-  ],
   plugins: [],
 };
