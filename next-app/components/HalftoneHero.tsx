@@ -5,6 +5,7 @@ import { AnimatePresence } from 'motion/react';
 import { useEffect, useState } from 'react';
 import SearchOverlay from './SearchOverlay';
 import NewsletterOverlay from './NewsletterOverlay';
+import type { ButtonSpot } from '@/lib/utils';
 
 const HalftoneDots = dynamic(() => import('@paper-design/shaders-react').then((m) => m.HalftoneDots), { ssr: false });
 
@@ -12,8 +13,10 @@ type OverlayState = { kind: 'search' | 'newsletter'; origin: DOMRect | null } | 
 
 const BUTTON = 'press absolute z-10 h-[42px] rounded-md bg-forest text-lime font-mono text-sm md:text-base font-bold uppercase tracking-wide shadow-[0_2px_0_rgba(0,0,0,0.25)] hover:bg-pine';
 
-export default function HalftoneHero() {
+export default function HalftoneHero({ spots }: { spots: [ButtonSpot, ButtonSpot] }) {
   const [overlay, setOverlay] = useState<OverlayState>(null);
+  // Keep the first positions so the buttons don't move when a meeting opens (page re-renders)
+  const [[newsletterSpot, searchSpot]] = useState(spots);
 
   const openFrom = (kind: 'search' | 'newsletter') => (e: React.MouseEvent<HTMLButtonElement>) =>
     // Keyboard "clicks" (Enter/Space) report detail 0 — open instantly for those
@@ -58,13 +61,18 @@ export default function HalftoneHero() {
         />
       </div>
 
-      <button onClick={openFrom('newsletter')} className={`${BUTTON} left-[11.6%] top-[18.6%] w-[min(222px,40%)]`}>
+      <button
+        onClick={openFrom('newsletter')}
+        className={`${BUTTON} w-[min(222px,40%)]`}
+        style={{ left: `${newsletterSpot.left}%`, top: `${newsletterSpot.top}%` }}
+      >
         Newsletter
       </button>
       <button
         onClick={openFrom('search')}
         aria-keyshortcuts="Meta+K /"
-        className={`${BUTTON} left-[32.6%] top-[32.6%] w-[min(204px,40%)] max-md:left-[46%] max-md:top-[42%]`}
+        className={`${BUTTON} w-[min(204px,40%)]`}
+        style={{ left: `${searchSpot.left}%`, top: `${searchSpot.top}%` }}
       >
         Search
       </button>

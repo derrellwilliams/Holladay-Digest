@@ -15,11 +15,12 @@ function parseMeetingDate(dateStr: string | null): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-// 9·19·26
+// 09·19·26
 export function formatDotDate(dateStr: string | null): string {
   const d = parseMeetingDate(dateStr);
   if (!d) return dateStr ?? '—';
-  return [d.getMonth() + 1, d.getDate(), String(d.getFullYear()).slice(-2)].join('·');
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return [pad(d.getMonth() + 1), pad(d.getDate()), String(d.getFullYear()).slice(-2)].join('·');
 }
 
 // September 22nd, 2026
@@ -30,4 +31,21 @@ export function formatLongDate(dateStr: string | null): string {
   const suffix = day % 10 === 1 && day !== 11 ? 'st' : day % 10 === 2 && day !== 12 ? 'nd' : day % 10 === 3 && day !== 13 ? 'rd' : 'th';
   const month = d.toLocaleDateString('en-US', { month: 'long' });
   return `${month} ${day}${suffix}, ${d.getFullYear()}`;
+}
+
+export interface ButtonSpot {
+  left: number; // % of hero width
+  top: number; // % of hero height
+}
+
+// Random, non-overlapping spots for the hero's two buttons (each button is at most 40% wide)
+export function randomButtonSpots(): [ButtonSpot, ButtonSpot] {
+  const spot = (): ButtonSpot => ({
+    left: Math.round(4 + Math.random() * 52),
+    top: Math.round(6 + Math.random() * 74),
+  });
+  const a = spot();
+  let b = spot();
+  while (Math.abs(a.top - b.top) < 18 && Math.abs(a.left - b.left) < 42) b = spot();
+  return [a, b];
 }

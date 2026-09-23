@@ -1,6 +1,6 @@
 import { getMeetings, getMeeting } from '@/lib/db';
 import { getCanonicalType } from '@/lib/meetingColors';
-import { formatDotDate } from '@/lib/utils';
+import { formatDotDate, randomButtonSpots } from '@/lib/utils';
 import Masthead from '@/components/Masthead';
 import MeetingList from '@/components/MeetingList';
 import HalftoneHero from '@/components/HalftoneHero';
@@ -32,7 +32,7 @@ export default async function DashboardPage({
             <MeetingList meetings={meetings} activeId={selected?.id ?? null} />
           </div>
           <div className="flex-1 min-w-0 px-4 md:px-0">
-            <HalftoneHero />
+            <HalftoneHero spots={randomButtonSpots()} />
           </div>
         </div>
       </div>
