@@ -83,9 +83,12 @@ export default function Overlay({ label, origin, onClose, children }: OverlayPro
         <div className="flex justify-end px-5 py-4 md:px-10 md:py-8">
           <button
             onClick={onClose}
-            className="press font-mono text-xs font-bold uppercase tracking-wider text-lime/70 hover:text-lime transition-colors px-3 py-2 -mr-3"
+            aria-label="Close"
+            className="press text-lime/70 hover:text-lime transition-colors p-2 -mr-2"
           >
-            Close ✕
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true">
+              <path d="M5 5l14 14M19 5L5 19" />
+            </svg>
           </button>
         </div>
         {children}

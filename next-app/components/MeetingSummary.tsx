@@ -149,7 +149,7 @@ export default function MeetingSummary({ meeting }: { meeting: Meeting }) {
   const subtype = getSubtype(meeting.meeting_type, true);
 
   return (
-    <article className="px-5 md:px-12 lg:px-[160px] pb-24 md:-mt-2 max-w-[1080px]">
+    <article className="px-8 md:px-12 lg:px-[160px] pb-24 md:-mt-2 max-w-[1080px]">
       <header className="flex items-start justify-between gap-6 flex-wrap">
         <div>
           <p className="font-mono text-sm text-paper">{formatLongDate(meeting.meeting_date)}</p>

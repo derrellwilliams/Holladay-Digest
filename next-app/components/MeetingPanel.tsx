@@ -58,7 +58,7 @@ export default function MeetingPanel({ meetingId, children }: { meetingId: numbe
           onDragEnd={onDragEnd}
         >
           <div ref={scrollRef} className="h-full overflow-y-auto overscroll-contain">
-            <div className="sticky top-0 z-10 flex justify-end px-5 py-4 md:px-8 md:py-6 bg-pine md:bg-transparent pointer-events-none">
+            <div className="sticky top-0 z-10 flex justify-end px-8 py-4 md:px-8 md:py-6 bg-pine md:bg-transparent pointer-events-none">
               <button
                 onClick={close}
                 className="press pointer-events-auto font-mono text-xs font-bold uppercase tracking-wider text-lime/70 hover:text-lime transition-colors px-3 py-2 -mr-3"
