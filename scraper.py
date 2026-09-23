@@ -414,7 +414,7 @@ def build_digest_html(meeting: dict) -> str:
         pdf_button = f"""
           <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0 0 0;">
             <tr><td style="border:1px solid #8FFF7A;border-radius:8px;">
-              <a href="{meeting['pdf_url']}" style="display:inline-block;padding:12px 32px;font-family:{EMAIL_MONO};font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#8FFF7A;text-decoration:none;">Download PDF</a>
+              <a href="{meeting['pdf_url']}" style="display:inline-block;padding:12px 32px;font-family:{EMAIL_MONO};font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#8FFF7A;text-decoration:none;">View PDF</a>
             </td></tr>
           </table>"""
 

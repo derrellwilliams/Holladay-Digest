@@ -164,7 +164,7 @@ export default function MeetingSummary({ meeting }: { meeting: Meeting }) {
             rel="noopener noreferrer"
             className="press inline-flex items-center justify-center px-12 py-3 rounded-lg border border-lime font-mono text-sm font-bold uppercase tracking-wider text-lime transition-colors duration-150 hover:bg-lime hover:text-forest"
           >
-            Download PDF
+            View PDF
           </a>
         )}
       </header>
