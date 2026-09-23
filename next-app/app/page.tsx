@@ -28,7 +28,7 @@ export default async function DashboardPage({
       <div className="flex flex-col md:h-dvh md:overflow-hidden">
         <Masthead />
         <div className="flex flex-col-reverse md:flex-row flex-1 min-h-0 md:pr-4 md:pb-9">
-          <div className="md:w-[324px] shrink-0 md:h-full">
+          <div className="md:w-[344px] shrink-0 md:h-full">
             <MeetingList meetings={meetings} activeId={selected?.id ?? null} />
           </div>
           <div className="flex-1 min-w-0 px-4 md:px-0">

@@ -46,7 +46,7 @@ export default function MeetingPanel({ meetingId, children }: { meetingId: numbe
         <motion.aside
           id="meeting-panel"
           aria-label="Meeting notes"
-          className="fixed inset-0 md:left-[385px] z-30 bg-pine text-paper shadow-[-24px_0_48px_rgba(0,0,0,0.25)]"
+          className="fixed inset-0 md:left-[405px] z-30 bg-pine text-paper shadow-[-24px_0_48px_rgba(0,0,0,0.25)]"
           initial={reduce ? { opacity: 0 } : { x: '100%' }}
           animate={reduce ? { opacity: 1 } : { x: 0, transition: { duration: 0.45, ease: DRAWER } }}
           exit={reduce ? { opacity: 0 } : { x: '100%', transition: { duration: 0.28, ease: DRAWER } }}
