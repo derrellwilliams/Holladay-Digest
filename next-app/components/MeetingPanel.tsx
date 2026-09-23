@@ -61,9 +61,12 @@ export default function MeetingPanel({ meetingId, children }: { meetingId: numbe
             <div className="sticky top-0 z-10 flex justify-end px-8 py-4 md:px-8 md:py-6 bg-pine md:bg-transparent pointer-events-none">
               <button
                 onClick={close}
-                className="press pointer-events-auto font-mono text-xs font-bold uppercase tracking-wider text-lime/70 hover:text-lime transition-colors px-3 py-2 -mr-3"
+                aria-label="Close"
+                className="press pointer-events-auto text-lime/70 hover:text-lime transition-colors p-2 -mr-2"
               >
-                Close ✕
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true">
+                  <path d="M5 5l14 14M19 5L5 19" />
+                </svg>
               </button>
             </div>
             <AnimatePresence mode="wait" initial={false}>
