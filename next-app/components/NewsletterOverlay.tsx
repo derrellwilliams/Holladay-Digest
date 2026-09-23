@@ -38,7 +38,7 @@ export default function NewsletterOverlay({ origin, onClose }: { origin: DOMRect
           variants={riseItem}
           className="font-display font-bold uppercase text-lime text-[18vw] md:text-[11vw] leading-[0.85]"
         >
-          Get the<br />Digest
+          Get the Digest
         </motion.h2>
 
         <motion.p variants={riseItem} className="font-mono text-base md:text-lg text-paper/80 mt-6 max-w-xl">
