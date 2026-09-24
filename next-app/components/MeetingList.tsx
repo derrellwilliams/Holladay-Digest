@@ -35,7 +35,7 @@ export default function MeetingList({ meetings, activeId }: { meetings: MeetingL
   }
 
   return (
-    <nav aria-label="Meetings" className="list-fade h-full overflow-y-auto overscroll-contain pb-16">
+    <nav aria-label="Meetings" className="list-fade no-scrollbar h-full overflow-y-auto overscroll-contain pb-16">
       <ul className="pl-6 md:pl-10 pr-6 py-3 md:py-1">
         {meetings.map((m, i) => {
           const active = m.id === shownId;

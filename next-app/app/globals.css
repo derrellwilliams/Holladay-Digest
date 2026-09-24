@@ -40,6 +40,14 @@ body {
   mask-image: linear-gradient(to bottom, black calc(100% - 64px), transparent);
 }
 
+/* Hide the scrollbar that appears with a mouse attached; still scrolls */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Meeting list rows: hover mirrors the active block, in the sheet's pine green */
 .list-link {
   transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out);
