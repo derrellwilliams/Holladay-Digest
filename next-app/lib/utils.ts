@@ -39,15 +39,14 @@ export interface ButtonSpot {
 }
 
 // Random spots for the hero's two buttons. `left` is where the button sits within the free space
-// (applied with a matching translate), so buttons of any width stay inside the hero; they're
-// always vertically apart so they never overlap
+// (applied with a matching translate), so buttons of any width stay inside the hero.
+// Tops stay in the upper part of the photo (the bottom is dark and the buttons get lost there),
+// and the two are always at least 18% apart vertically so they never overlap.
 export function randomButtonSpots(): [ButtonSpot, ButtonSpot] {
-  const spot = (): ButtonSpot => ({
-    left: Math.round(6 + Math.random() * 88),
-    top: Math.round(6 + Math.random() * 74),
-  });
-  const a = spot();
-  let b = spot();
-  while (Math.abs(a.top - b.top) < 18) b = spot();
-  return [a, b];
+  const left = () => Math.round(6 + Math.random() * 88);
+  const upper = Math.round(6 + Math.random() * 12); // 6–18%
+  const lower = Math.round(upper + 18 + Math.random() * (36 - upper - 18)); // upper+18 … 36%
+  const a = { left: left(), top: upper };
+  const b = { left: left(), top: lower };
+  return Math.random() < 0.5 ? [a, b] : [b, a];
 }
