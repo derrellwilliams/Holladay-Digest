@@ -66,7 +66,7 @@ export default function HalftoneHero({ spots }: { spots: [ButtonSpot, ButtonSpot
         className={BUTTON}
         style={{ left: `${newsletterSpot.left}%`, top: `${newsletterSpot.top}%`, translate: `-${newsletterSpot.left}% 0` }}
       >
-        Email me after meetings
+        Email me updates
       </button>
       <button
         onClick={openFrom('search')}
