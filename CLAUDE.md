@@ -69,6 +69,7 @@ For any non-trivial change, state success criteria first:
 
 ### Deployment
 - Vercel, root directory set to `next-app`
+- Production URL: https://holladay.fyi (redirects to `www.holladay.fyi`)
 - Database (`meeting_summaries.db`) is committed to the repo — no external DB
 - Remote: `https://github.com/derrellwilliams/Holladay-Digest.git`
 

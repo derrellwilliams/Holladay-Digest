@@ -283,7 +283,7 @@ EMAIL_DISPLAY = "'Roboto Condensed','Arial Narrow',Arial,sans-serif"
 EMAIL_MONO = "'Roboto Mono',Menlo,Consolas,monospace"
 EMAIL_SANS = "Roboto,'Helvetica Neue',Arial,sans-serif"
 # Static capture of the site's halftone hero (next-app/public/email-halftone.jpg), served by the deployed site
-EMAIL_HALFTONE_URL = "https://holladay-digest-five.vercel.app/email-halftone.jpg"
+EMAIL_HALFTONE_URL = "https://www.holladay.fyi/email-halftone.jpg"
 
 PINE = (0x0F, 0x1A, 0x0D)
 PAPER = (0xEE, 0xF2, 0xEA)
