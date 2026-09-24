@@ -11,7 +11,7 @@ const HalftoneDots = dynamic(() => import('@paper-design/shaders-react').then((m
 
 type OverlayState = { kind: 'search' | 'newsletter'; origin: DOMRect | null } | null;
 
-const BUTTON = 'press absolute z-10 h-[42px] rounded-md bg-forest text-lime font-mono text-sm md:text-base font-bold uppercase tracking-wide shadow-[0_2px_0_rgba(0,0,0,0.25)] hover:bg-pine';
+const BUTTON = 'press absolute z-10 h-[42px] min-w-[140px] md:min-w-[204px] px-6 whitespace-nowrap rounded-md bg-forest text-lime font-mono text-[12px] sm:text-sm md:text-base font-bold uppercase tracking-wide shadow-[0_2px_0_rgba(0,0,0,0.25)] hover:bg-pine';
 
 export default function HalftoneHero({ spots }: { spots: [ButtonSpot, ButtonSpot] }) {
   const [overlay, setOverlay] = useState<OverlayState>(null);
@@ -63,16 +63,16 @@ export default function HalftoneHero({ spots }: { spots: [ButtonSpot, ButtonSpot
 
       <button
         onClick={openFrom('newsletter')}
-        className={`${BUTTON} w-[min(222px,40%)]`}
-        style={{ left: `${newsletterSpot.left}%`, top: `${newsletterSpot.top}%` }}
+        className={BUTTON}
+        style={{ left: `${newsletterSpot.left}%`, top: `${newsletterSpot.top}%`, translate: `-${newsletterSpot.left}% 0` }}
       >
-        Newsletter
+        Email me after meetings
       </button>
       <button
         onClick={openFrom('search')}
         aria-keyshortcuts="Meta+K /"
-        className={`${BUTTON} w-[min(204px,40%)]`}
-        style={{ left: `${searchSpot.left}%`, top: `${searchSpot.top}%` }}
+        className={BUTTON}
+        style={{ left: `${searchSpot.left}%`, top: `${searchSpot.top}%`, translate: `-${searchSpot.left}% 0` }}
       >
         Search
       </button>

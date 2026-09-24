@@ -46,7 +46,7 @@ export default function MeetingList({ meetings, activeId }: { meetings: MeetingL
                 scroll={false}
                 onClick={(e) => open(e, m.id)}
                 aria-current={active ? 'page' : undefined}
-                className={`list-link block -mx-2 px-2 py-[0.72rem] rounded font-mono text-[15px] md:text-base truncate transition-colors duration-150 ${
+                className={`list-link block -mx-2 px-2 py-[0.72rem] rounded font-mono text-[15px] md:text-base truncate ${
                   active ? 'bg-lime text-forest' : 'text-lime'
                 }`}
               >

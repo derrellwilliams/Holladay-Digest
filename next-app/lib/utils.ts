@@ -38,14 +38,16 @@ export interface ButtonSpot {
   top: number; // % of hero height
 }
 
-// Random, non-overlapping spots for the hero's two buttons (each button is at most 40% wide)
+// Random spots for the hero's two buttons. `left` is where the button sits within the free space
+// (applied with a matching translate), so buttons of any width stay inside the hero; they're
+// always vertically apart so they never overlap
 export function randomButtonSpots(): [ButtonSpot, ButtonSpot] {
   const spot = (): ButtonSpot => ({
-    left: Math.round(4 + Math.random() * 52),
+    left: Math.round(6 + Math.random() * 88),
     top: Math.round(6 + Math.random() * 74),
   });
   const a = spot();
   let b = spot();
-  while (Math.abs(a.top - b.top) < 18 && Math.abs(a.left - b.left) < 42) b = spot();
+  while (Math.abs(a.top - b.top) < 18) b = spot();
   return [a, b];
 }

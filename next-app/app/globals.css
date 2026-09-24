@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+  text-wrap: pretty;
+}
+
 :root {
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
@@ -36,8 +40,12 @@
   mask-image: linear-gradient(to bottom, black calc(100% - 64px), transparent);
 }
 
+/* Meeting list rows: hover mirrors the active block, in the sheet's pine green */
+.list-link {
+  transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out);
+}
 @media (hover: hover) {
-  .list-link:not([aria-current]):hover { color: #EEF2EA; }
+  .list-link:not([aria-current]):hover { background-color: #0F1A0D; }
 }
 
 .press {

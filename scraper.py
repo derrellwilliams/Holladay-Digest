@@ -6,6 +6,7 @@ extracts text, summarizes via Claude, and saves to SQLite.
 """
 
 import argparse
+import html
 import os
 import re
 import sqlite3
@@ -247,12 +248,13 @@ Meeting Date: {meeting_date}
 
 Provide a structured summary with these sections:
 
-1. **Meeting Overview** — Meeting type, date, location, quorum/attendees.
-2. **Key Topics Discussed** — Bullet list of main subjects.
-3. **Decisions Made** — Each formal decision or resolution adopted.
-4. **Votes** — Each vote taken: motion, outcome, and individual votes if recorded.
-5. **Action Items** — Tasks assigned or follow-up actions, with responsible parties.
-6. **Other Notable Items** — Public comments, announcements, or anything significant.
+1. **In Brief** — Two plain-language sentences a resident can read in ten seconds: what happened and why it matters.
+2. **Meeting Overview** — Meeting type, date, location, quorum/attendees.
+3. **Key Topics Discussed** — Bullet list of main subjects.
+4. **Decisions Made** — Each formal decision or resolution adopted.
+5. **Votes** — Each vote taken: motion, outcome, and individual votes if recorded.
+6. **Action Items** — Tasks assigned or follow-up actions, with responsible parties.
+7. **Other Notable Items** — Public comments, announcements, or anything significant.
 
 Be concise but complete. Use dates and names exactly as written in the document.
 
@@ -275,7 +277,7 @@ def summarize(client: anthropic.Anthropic, text: str, meeting_type: str, meeting
     return msg.content[0].text
 
 
-# ── Markdown → HTML (email-safe inline styles) ────────────────────────────────
+# ── Summary → email HTML (mirrors next-app/components/MeetingSummary.tsx) ─────
 # Matches the site: Roboto Condensed / Roboto Mono / Roboto, with fallbacks for clients that block web fonts
 EMAIL_DISPLAY = "'Roboto Condensed','Arial Narrow',Arial,sans-serif"
 EMAIL_MONO = "'Roboto Mono',Menlo,Consolas,monospace"
@@ -283,112 +285,296 @@ EMAIL_SANS = "Roboto,'Helvetica Neue',Arial,sans-serif"
 # Static capture of the site's halftone hero (next-app/public/email-halftone.jpg), served by the deployed site
 EMAIL_HALFTONE_URL = "https://holladay-digest-five.vercel.app/email-halftone.jpg"
 
-def _inline_md(text: str) -> str:
-    """Convert inline markdown (bold, italic) to HTML."""
-    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
-    text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
-    return text
+PINE = (0x0F, 0x1A, 0x0D)
+PAPER = (0xEE, 0xF2, 0xEA)
+LIME = (0x8F, 0xFF, 0x7A)
 
 
-def _render_table(table_lines: list[str]) -> str:
-    rows = []
-    for line in table_lines:
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        rows.append(cells)
-
-    if len(rows) < 2:
-        return ""
-
-    header_cells = rows[0]
-    data_rows = rows[2:]  # rows[1] is the --- separator row
-
-    th_style = f"padding:8px 12px;text-align:left;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#8FFF7A;border-bottom:1px solid #2E4A24;white-space:nowrap;font-family:{EMAIL_MONO};"
-    td_style = f"padding:8px 12px;font-size:14px;line-height:1.5;color:#EEF2EA;border-bottom:1px solid #1F3318;vertical-align:top;font-family:{EMAIL_SANS};"
-
-    thead = "<tr>" + "".join(f'<th style="{th_style}">{_inline_md(c)}</th>' for c in header_cells) + "</tr>"
-    tbody = "".join(
-        "<tr>" + "".join(f'<td style="{td_style}">{_inline_md(c)}</td>' for c in row) + "</tr>"
-        for row in data_rows
-    )
-    table_style = "width:100%;border-collapse:collapse;margin:16px 0;"
-    return f'<table style="{table_style}"><thead>{thead}</thead><tbody>{tbody}</tbody></table>'
+def _mix(fg: tuple, alpha: float, bg: tuple = PINE) -> str:
+    """Solid hex for a translucent color over the card (email clients handle rgba unevenly)."""
+    return "#" + "".join(f"{round(f * alpha + b * (1 - alpha)):02X}" for f, b in zip(fg, bg))
 
 
-def markdown_to_html(text: str) -> str:
-    """Convert Claude's markdown summary to email-safe HTML with inline styles."""
+SECTIONS = [
+    ("brief", r"^in brief$", "In Brief"),
+    ("overview", r"^(meeting )?overview$", "Overview"),
+    ("topics", r"^key topics( discussed)?$", "Topics"),
+    ("decisions", r"^decisions( made)?$", "Decisions"),
+    ("votes", r"^votes?( taken)?$", "Votes"),
+    ("actions", r"^action items$", "Actions"),
+    ("notes", r"^(other )?notable items$", "Notes"),
+]
+SECTION_TITLES = {key: title for key, _, title in SECTIONS}
+BULLET = re.compile(r"^(\s*)(?:[-*•]|\d+\.)\s+(.*)$")
+EMPTY_SECTION = re.compile(
+    r"\b(no|none)\b[^.]*\b(recorded|taken|adopted|made|assigned|identified|noted|captured|occurred)\b"
+    r"|\bnot (recorded|captured|documented)\b|\bdoes not (record|include|capture|contain)\b",
+    re.I,
+)
+LOGISTICS = re.compile(r"\b(quorum|attend\w*|present|absent|presiding|time|location|called to order)\b", re.I)
+HOUSEKEEPING = re.compile(r"transcript|off-topic|informal|summary note|note on", re.I)
+RESPONSIBLE = re.compile(r"responsib|owner|party|assigned|who", re.I)
+
+
+def _clean_title(text: str) -> str:
+    return re.sub(r"^\d+\.\s*", "", text.replace("**", "")).rstrip(":").strip()
+
+
+def _section_key(title: str) -> Optional[str]:
+    return next((key for key, pattern, _ in SECTIONS if re.match(pattern, title, re.I)), None)
+
+
+def _parse_item(text: str) -> dict:
+    m = re.match(r"^\*\*(.+?)\*\*\s*[:—–-]?\s*(.*)$", text)
+    if m and len(m.group(1)) < 120:
+        return {"label": m.group(1).rstrip(":").strip(), "body": m.group(2), "children": []}
+    return {"label": None, "body": text, "children": []}
+
+
+def parse_summary(text: str, start_in_body: bool = False) -> list[dict]:
+    """Split an AI summary into its sections; each section is a list of blocks."""
+    sections: list[dict] = []
+    current = {"key": "body", "blocks": []} if start_in_body else None
+    if current:
+        sections.append(current)
     lines = text.split("\n")
-    parts = []
     i = 0
-
     while i < len(lines):
-        line = lines[i]
-        stripped = line.strip()
-
-        if not stripped:
+        t = lines[i].strip()
+        if not t or re.match(r"^(-{3,}|\*{3,})$", t):
             i += 1
             continue
 
-        # Horizontal rule
-        if re.match(r'^-{3,}$', stripped):
-            parts.append('<hr style="border:none;border-top:1px solid #1F3318;margin:24px 0;">')
+        m = re.match(r"^#{1,6}\s+(.*)$", t) or re.match(r"^\*\*([^*]+)\*\*:?$", t)
+        heading = m.group(1) if m else (t if re.match(r"^\d+\.\s+", t) and _section_key(_clean_title(t)) else None)
+        if heading:
+            title = _clean_title(heading)
+            key = _section_key(title)
+            if key:
+                current = {"key": key, "blocks": []}
+                sections.append(current)
+            elif current:
+                current["blocks"].append({"kind": "sub", "text": title})
             i += 1
             continue
 
-        # H1 (# Title) — skip, we render meeting date as the heading
-        if stripped.startswith("# ") and not stripped.startswith("## "):
-            i += 1
-            continue
-
-        # H2 (## 1. Section)
-        if stripped.startswith("## "):
-            content = _inline_md(stripped[3:])
-            parts.append(
-                f'<h2 style="margin:32px 0 8px 0;font-size:20px;font-weight:700;line-height:1.2;'
-                f'color:#EEF2EA;font-family:{EMAIL_DISPLAY};">{content}</h2>'
-            )
-            i += 1
-            continue
-
-        # Table block — collect consecutive | lines
-        if stripped.startswith("|"):
-            table_lines = []
+        if t.startswith("|"):
+            rows = []
             while i < len(lines) and lines[i].strip().startswith("|"):
-                table_lines.append(lines[i])
+                row = lines[i].strip()
+                if not re.match(r"^\|[\s:|-]+\|$", row):
+                    rows.append([c.strip() for c in row.strip("|").split("|")])
                 i += 1
-            parts.append(_render_table(table_lines))
+            has_header = bool(rows) and all(c and not c.startswith("**") for c in rows[0])
+            if current:
+                current["blocks"].append({"kind": "table", "header": rows[0] if has_header else [], "rows": rows[1:] if has_header else rows})
             continue
 
-        # Bullet list — collect consecutive - items
-        if stripped.startswith("- ") or stripped.startswith("* "):
-            items = []
-            while i < len(lines) and (lines[i].strip().startswith("- ") or lines[i].strip().startswith("* ")):
-                item_text = _inline_md(lines[i].strip()[2:])
-                items.append(
-                    f'<li style="margin:0 0 8px 0;color:#EEF2EA;font-size:15px;line-height:1.7;font-family:{EMAIL_SANS};">{item_text}</li>'
-                )
-                i += 1
-            parts.append(
-                '<ul style="margin:0 0 16px 0;padding-left:18px;color:#8FFF7A;">' + "".join(items) + "</ul>"
-            )
-            continue
-
-        # Blockquote — muted italic note, like the site
-        if stripped.startswith(">"):
-            parts.append(
-                f'<p style="margin:0 0 14px 0;color:#EEF2EA;opacity:0.55;font-style:italic;font-size:13px;line-height:1.6;font-family:{EMAIL_SANS};">'
-                f'{_inline_md(stripped.lstrip("> ").strip())}</p>'
-            )
+        if t.startswith(">"):
+            if current:
+                current["blocks"].append({"kind": "note", "text": t.lstrip("> ").strip()})
             i += 1
             continue
 
-        # Regular paragraph
-        parts.append(
-            f'<p style="margin:0 0 14px 0;color:#EEF2EA;font-size:15px;line-height:1.7;font-family:{EMAIL_SANS};">'
-            f'{_inline_md(stripped)}</p>'
-        )
+        if BULLET.match(lines[i]):
+            items: list[dict] = []
+            while i < len(lines) and (bm := BULLET.match(lines[i])):
+                item = _parse_item(bm.group(2).strip())
+                if bm.group(1) and items:
+                    items[-1]["children"].append(item)
+                else:
+                    items.append(item)
+                i += 1
+            if current:
+                current["blocks"].append({"kind": "list", "items": items})
+            continue
+
+        if current:
+            current["blocks"].append({"kind": "para", "text": t})
         i += 1
 
-    return "\n".join(parts)
+    # Older summaries without recognizable section headings render as one body
+    return sections if sections or start_in_body else parse_summary(text, True)
+
+
+def _flat_text(blocks: list[dict]) -> str:
+    parts = []
+    for b in blocks:
+        if b["kind"] == "list":
+            parts += [" ".join(p for p in (it["label"], it["body"]) if p) for it in b["items"]]
+        elif b["kind"] != "table":
+            parts.append(b["text"])
+    return re.sub(r"\*+", "", " ".join(parts)).strip()
+
+
+def _is_empty_section(section: dict) -> bool:
+    simple = all(
+        b["kind"] in ("para", "note") or (b["kind"] == "list" and len(b["items"]) <= 1 and not (b["items"] and b["items"][0]["children"]))
+        for b in section["blocks"]
+    )
+    text = _flat_text(section["blocks"])
+    return simple and len(text) < 500 and bool(EMPTY_SECTION.search(text))
+
+
+def _inline(text: str) -> str:
+    """Escape, then render **bold** and *italic*."""
+    text = html.escape(text, quote=False)
+    text = re.sub(r"\*\*([^*]+)\*\*", rf'<strong style="font-weight:500;color:{_mix(PAPER, 1)};">\1</strong>', text)
+    return re.sub(r"\*([^*\s][^*]*)\*", r"<em>\1</em>", text)
+
+
+def _p(text: str, color: str, size: int = 15, extra: str = "") -> str:
+    return f'<p style="margin:0 0 14px 0;font-family:{EMAIL_SANS};font-size:{size}px;line-height:1.6;color:{color};{extra}">{text}</p>'
+
+
+def _note(text: str) -> str:
+    return _p(text, _mix(PAPER, 0.45), 13, "font-style:italic;")
+
+
+def _mono_label(text: str, color: str) -> str:
+    return f'<span style="font-family:{EMAIL_MONO};font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:{color};">{html.escape(text)}</span>'
+
+
+def _render_children(children: list[dict]) -> str:
+    kids = "".join(
+        f'<p style="margin:0 0 6px 0;font-family:{EMAIL_SANS};font-size:14px;line-height:1.6;color:{_mix(PAPER, 0.65)};">'
+        + (f'<span style="font-weight:500;color:{_mix(PAPER, 0.85)};">{_inline(c["label"])}: </span>' if c["label"] else "")
+        + f'{_inline(c["body"])}</p>'
+        for c in children
+    )
+    return f'<div style="margin-top:8px;padding-left:14px;border-left:1px solid {_mix(LIME, 0.15)};">{kids}</div>'
+
+
+def _render_item(item: dict, dim_housekeeping: bool) -> str:
+    children = _render_children(item["children"]) if item["children"] else ""
+
+    # Plain items get a small lime square with a hanging indent; labeled items are marked by their label
+    if not item["label"]:
+        return (
+            '<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 14px 0;"><tr>'
+            f'<td valign="top" width="18" style="width:18px;padding-top:9px;"><div style="width:6px;height:6px;font-size:0;line-height:0;background:{_mix(LIME, 0.7)};">&nbsp;</div></td>'
+            f'<td valign="top"><p style="margin:0;font-family:{EMAIL_SANS};font-size:15px;line-height:1.6;color:{_mix(PAPER, 0.85)};">{_inline(item["body"])}</p>{children}</td>'
+            "</tr></table>"
+        )
+
+    dim = dim_housekeeping and HOUSEKEEPING.search(item["label"])
+    out = [f'<p style="margin:0;font-family:{EMAIL_DISPLAY};font-weight:700;font-size:{15 if dim else 17}px;line-height:1.3;color:{_mix(PAPER, 0.6 if dim else 1)};">{_inline(item["label"])}</p>']
+    if item["body"]:
+        out.append(f'<p style="margin:4px 0 0 0;font-family:{EMAIL_SANS};font-size:{14 if dim else 15}px;line-height:1.6;color:{_mix(PAPER, 0.5 if dim else 0.75)};">{_inline(item["body"])}</p>')
+    return f'<div style="margin:0 0 16px 0;">{"".join(out)}{children}</div>'
+
+
+def _render_table(block: dict, section_key: str) -> str:
+    header, rows = block["header"], block["rows"]
+    # Two columns (Field | Details, Member | Vote, Motion | …) read best as label/value pairs
+    if section_key != "actions" and rows and all(len(r) == 2 for r in rows):
+        trs = "".join(
+            f'<tr><td valign="top" style="padding:3px 16px 3px 0;width:130px;">{_mono_label(r[0].replace("**", ""), _mix(LIME, 0.7))}</td>'
+            f'<td valign="top" style="padding:2px 0;font-family:{EMAIL_SANS};font-size:15px;line-height:1.5;color:{_mix(PAPER, 0.85)};">{_inline(r[1])}</td></tr>'
+            for r in rows
+        )
+        return f'<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 16px 0;">{trs}</table>'
+
+    # Wider tables (Action | Responsible | Notes) become a list: first column leads, the rest are tags
+    responsible_col = next((j for j, h in enumerate(header) if RESPONSIBLE.search(h)), -1)
+    items = []
+    for r in rows:
+        tags = []
+        for col, cell in enumerate(r[1:], start=1):
+            if not cell or cell in ("—", "-"):
+                continue
+            if col == responsible_col:
+                tags.append(
+                    f'<span style="display:inline-block;margin:6px 10px 0 0;padding:2px 8px;border:1px solid {_mix(LIME, 0.3)};border-radius:4px;'
+                    f'font-family:{EMAIL_MONO};font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:{_mix(LIME, 0.9)};">{html.escape(cell.replace("**", ""))}</span>'
+                )
+            else:
+                label = _mono_label(header[col], _mix(LIME, 0.6)) + "&nbsp;" if col < len(header) and header[col] else ""
+                tags.append(f'<span style="display:inline-block;margin:6px 10px 0 0;font-family:{EMAIL_SANS};font-size:13px;color:{_mix(PAPER, 0.55)};">{label}{_inline(cell)}</span>')
+        items.append(
+            f'<div style="margin:0 0 16px 0;"><p style="margin:0;font-family:{EMAIL_SANS};font-size:15px;line-height:1.6;color:{_mix(PAPER, 1)};">{_inline(r[0])}</p>{"".join(tags)}</div>'
+        )
+    return "".join(items)
+
+
+def _render_block(block: dict, section_key: str) -> str:
+    kind = block["kind"]
+    if kind == "list":
+        return "".join(_render_item(it, section_key == "notes") for it in block["items"])
+    if kind == "table":
+        return _render_table(block, section_key)
+    if kind == "note":
+        return _note(_inline(block["text"]))
+    if kind == "sub":
+        return f'<p style="margin:8px 0 10px 0;font-family:{EMAIL_DISPLAY};font-weight:700;font-size:18px;line-height:1.3;color:{_mix(PAPER, 1)};">{_inline(block["text"])}</p>'
+    # Fully italic lines are asides, e.g. "*(Individual votes not recorded)*"
+    if re.match(r"^\*[^*].*\*$", block["text"]):
+        return _note(html.escape(block["text"][1:-1], quote=False))
+    return _p(_inline(block["text"]), _mix(PAPER, 0.85))
+
+
+def render_summary_html(summary: str) -> str:
+    """Email body for a meeting summary: In Brief, caveats, then each section."""
+    sections = parse_summary(summary)
+    out = []
+
+    brief = next((s for s in sections if s["key"] == "brief"), None)
+    if brief:
+        out.append(f'<p style="margin:24px 0 0 0;font-family:{EMAIL_SANS};font-size:19px;line-height:1.55;color:{_mix(PAPER, 1)};">{_inline(_flat_text(brief["blocks"]))}</p>')
+
+    # From the overview, keep only quoted caveats (e.g. incomplete minutes) — never quorum, attendance, time or location
+    overview = next((s for s in sections if s["key"] == "overview"), None)
+    for b in overview["blocks"] if overview else []:
+        if b["kind"] == "note" and not LOGISTICS.search(b["text"]):
+            out.append(f'<div style="margin-top:16px;">{_note(_inline(b["text"]))}</div>')
+
+    rule = f"margin-top:32px;padding-top:18px;border-top:1px solid {_mix(LIME, 0.15)};"
+    for s in sections:
+        if s["key"] in ("brief", "overview"):
+            continue
+        label = _mono_label(SECTION_TITLES[s["key"]], _mix(LIME, 1)) if s["key"] in SECTION_TITLES else ""
+        if _is_empty_section(s):
+            first = re.split(r"(?<=\.)\s", _flat_text(s["blocks"]))[0]
+            out.append(f'<div style="{rule}">{label}&nbsp;&nbsp;<span style="font-family:{EMAIL_SANS};font-size:14px;color:{_mix(PAPER, 0.45)};">{html.escape(first)}</span></div>')
+            continue
+        body = "".join(_render_block(b, s["key"]) for b in s["blocks"])
+        out.append(f'<div style="{rule}">{label}<div style="margin-top:16px;">{body}</div></div>')
+
+    return "\n".join(out)
+
+
+def _canonical_type(meeting_type: str) -> str:
+    t = meeting_type.lower()
+    if "city council" in t:
+        return "City Council"
+    if "planning commission" in t:
+        return "Planning Commission"
+    return re.sub(r"\(opens in(to)? a? ?new window\)", "", meeting_type, flags=re.I).strip()
+
+
+def _subtype(meeting_type: str) -> str:
+    t = meeting_type.lower()
+    if "audio only" in t:
+        return ""
+    if "rda" in t:
+        return "RDA"
+    if "work meeting" in t or "work mtg" in t:
+        return "Work Meeting"
+    if "legislative" in t:
+        return "Legislative"
+    return ""
+
+
+def meeting_title(meeting_type: str) -> str:
+    """'City Council Work Meeting(opens…)' → 'City Council Work Meeting'; matches the site's panel title."""
+    base = re.sub(r"\s*-\s*audio only$", "", _canonical_type(meeting_type), flags=re.I)
+    base = re.sub(r"\bMtg\b", "Meeting", base, flags=re.I)
+    subtype = _subtype(meeting_type)
+    sub = subtype if subtype and re.sub(r" meeting$", "", subtype, flags=re.I).lower() not in base.lower() else ""
+    if sub in ("Work Meeting", "Legislative"):
+        return f"{base} {re.sub(r' Meeting$', '', sub)} Meeting"
+    title = base if re.search(r"\b(meeting|ceremony|hearing|retreat|session)$", base, re.I) else f"{base} Meeting"
+    return f"{title} · {sub}" if sub else title
 
 
 # ── Email digest ───────────────────────────────────────────────────────────────
@@ -407,8 +593,8 @@ def _long_date(date_str: Optional[str]) -> str:
 
 def build_digest_html(meeting: dict) -> str:
     """Dark green email matching the Holladay Digest site."""
-    meeting_type = meeting["meeting_type"]
-    body_html = markdown_to_html(meeting["summary"])
+    title = html.escape(meeting_title(meeting["meeting_type"]))
+    body_html = render_summary_html(meeting["summary"])
     pdf_button = ""
     if meeting.get("pdf_url"):
         pdf_button = f"""
@@ -425,30 +611,28 @@ def build_digest_html(meeting: dict) -> str:
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
 <meta name="supported-color-schemes" content="dark">
-<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Roboto+Mono:wght@400;700&family=Roboto&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Roboto+Mono:wght@400;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
 <style>
   @media (max-width: 620px) {{
     .hd {{ font-size: 11.6vw !important; }}
     .px {{ padding-left: 20px !important; padding-right: 20px !important; }}
-    .frame {{ padding: 72px 12px 0 !important; }}
+    .frame {{ padding: 110px 12px 0 !important; }}
   }}
 </style>
 </head>
-<body style="margin:0;padding:0;background:#16290F;" bgcolor="#16290F">
+<body style="margin:0;padding:0;background:#16290F;text-wrap:pretty;" bgcolor="#16290F">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#16290F" style="background:#16290F;">
     <tr><td align="center" style="padding:32px 0 40px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;">
         <tr><td class="px" style="padding:0 24px 28px;">
           <p class="hd" style="margin:0;font-family:{EMAIL_DISPLAY};font-weight:700;font-size:78px;line-height:0.85;letter-spacing:-0.01em;text-transform:uppercase;color:#8FFF7A;">Holladay Digest</p>
         </td></tr>
-        <tr><td class="frame" background="{EMAIL_HALFTONE_URL}" bgcolor="#16290F" style="background-color:#16290F;background-image:url('{EMAIL_HALFTONE_URL}');background-repeat:no-repeat;background-position:center top;background-size:100% auto;padding:120px 28px 0;">
+        <tr><td class="frame" background="{EMAIL_HALFTONE_URL}" bgcolor="#16290F" style="background-color:#16290F;background-image:url('{EMAIL_HALFTONE_URL}');background-repeat:no-repeat;background-position:center top;background-size:100% auto;padding:185px 28px 0;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
             <tr><td bgcolor="#0F1A0D" class="px" style="background:#0F1A0D;padding:36px 40px 40px;">
           <p style="margin:0;font-family:{EMAIL_MONO};font-size:13px;color:#EEF2EA;">{_long_date(meeting.get("meeting_date"))}</p>
-          <h1 style="margin:4px 0 0 0;font-family:{EMAIL_DISPLAY};font-weight:400;font-size:32px;line-height:1.15;color:#EEF2EA;">{meeting_type}</h1>{pdf_button}
-          <div style="margin-top:12px;">
-            {body_html}
-          </div>
+          <h1 style="margin:4px 0 0 0;font-family:{EMAIL_DISPLAY};font-weight:400;font-size:32px;line-height:1.15;color:#EEF2EA;">{title}</h1>{pdf_button}
+          {body_html}
             </td></tr>
           </table>
         </td></tr>

@@ -24,7 +24,7 @@ export default function MeetingPanel({ meetingId, children }: { meetingId: numbe
 
   useEffect(() => {
     if (meetingId === null) return;
-    scrollRef.current?.scrollTo({ top: 0 });
+    scrollRef.current?.scrollTo({ top: 0, behavior: 'instant' });
     const onKey = (e: KeyboardEvent) => {
       // Let an open search/newsletter overlay handle its own Escape
       if (e.key === 'Escape' && !document.querySelector('[aria-modal="true"]')) close();
@@ -57,7 +57,7 @@ export default function MeetingPanel({ meetingId, children }: { meetingId: numbe
           dragElastic={{ left: 0, right: 1 }}
           onDragEnd={onDragEnd}
         >
-          <div ref={scrollRef} className="h-full overflow-y-auto overscroll-contain">
+          <div ref={scrollRef} data-panel-scroll className="h-full overflow-y-auto overscroll-contain scroll-smooth motion-reduce:scroll-auto">
             <div className="sticky top-0 z-10 flex justify-end px-8 py-4 md:px-8 md:py-6 bg-pine md:bg-transparent pointer-events-none">
               <button
                 onClick={close}
@@ -73,7 +73,8 @@ export default function MeetingPanel({ meetingId, children }: { meetingId: numbe
               <motion.div
                 key={meetingId}
                 initial={{ opacity: 0, filter: 'blur(2px)' }}
-                animate={{ opacity: 1, filter: 'blur(0px)', transition: { duration: 0.18, ease: 'easeOut' } }}
+                // Clear the filter after the fade: a lingering filter traps the sticky section select under the close bar
+                animate={{ opacity: 1, filter: 'blur(0px)', transitionEnd: { filter: 'none' }, transition: { duration: 0.18, ease: 'easeOut' } }}
                 exit={{ opacity: 0, filter: 'blur(2px)', transition: { duration: 0.09, ease: 'easeOut' } }}
               >
                 {children}
