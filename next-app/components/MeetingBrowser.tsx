@@ -156,14 +156,14 @@ export default function MeetingBrowser({
         className="flex-1 md:flex-none md:w-[42%] min-w-0 md:pr-12 text-paper [overflow-anchor:none]"
       >
         {/* Fills the column minus a peek of the first meeting; text sits at the top, level with the first date */}
-        <section aria-label="About Holladay Digest" className="px-5 md:px-0 py-12 md:pt-[52px] md:pb-0 md:min-h-[calc(100dvh-240px)]">
+        <section aria-label="About Holladay Digest" className="intro-copy px-5 md:px-0 py-12 md:pt-[52px] md:pb-0 md:min-h-[calc(100dvh-240px)]">
           <AboutText className="max-w-2xl" />
         </section>
-        {meetings.map((m) => (
+        {meetings.map((m, i) => (
           <section
             key={m.id}
             id={`meeting-${m.id}`}
-            className="meeting bg-pine mb-3 md:mb-6 pt-8 md:pt-11"
+            className={`meeting ${i === 0 ? 'intro-card ' : ''}bg-pine mb-3 md:mb-6 pt-8 md:pt-11`}
             style={rendered.has(m.id) ? undefined : { height: estimateHeight(m) }}
           >
             {rendered.has(m.id) && <MeetingSummary meeting={m} />}

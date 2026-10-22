@@ -12,7 +12,8 @@ body {
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-/* First-visit intro — [data-intro] is set once per session by the inline script in layout */
+/* First-visit intro — [data-intro] is set once per session by the inline script in layout.
+   Sequence: image fades in, title letters rise, the dates roll down, then the about copy and first meeting. */
 @keyframes letter-rise {
   from { transform: translateY(105%); }
 }
@@ -25,14 +26,25 @@ body {
 
 [data-intro] .intro-letter {
   animation: letter-rise 600ms var(--ease-out) both;
-  animation-delay: calc(var(--i) * 30ms);
+  animation-delay: calc(250ms + var(--i) * 30ms);
 }
 [data-intro] .intro-row {
   animation: row-rise 400ms var(--ease-out) both;
-  animation-delay: calc(300ms + var(--i) * 30ms);
+  animation-delay: calc(1000ms + var(--i) * 30ms);
 }
 [data-intro] .intro-fade {
-  animation: fade-in 800ms var(--ease-out) 200ms both;
+  animation: fade-in 600ms var(--ease-out) both;
+}
+/* Longer, gentler curve than the rest so the copy visibly fades rather than snapping in */
+[data-intro] .intro-copy {
+  animation: row-rise 1000ms ease 1300ms both;
+}
+[data-intro] .intro-card {
+  animation: row-rise 400ms var(--ease-out) 1900ms both;
+}
+/* Hold the whole intro until the hero image is ready (HalftoneHero sets data-hero-ready) */
+[data-intro]:not([data-hero-ready]) :is(.intro-letter, .intro-fade, .intro-row, .intro-copy, .intro-card) {
+  animation-play-state: paused;
 }
 
 /* Soft fade at the bottom of the scrolling date list */
@@ -69,6 +81,11 @@ body {
   [data-intro] .intro-letter,
   [data-intro] .intro-row {
     animation: none;
+  }
+  /* Content still arrives in order, just without the rise */
+  [data-intro] .intro-copy,
+  [data-intro] .intro-card {
+    animation-name: fade-in;
   }
   .press:active {
     transform: none;

@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { useEffect, useRef } from 'react';
 import { useOpenOverlay } from './Overlays';
 
 const HalftoneDots = dynamic(() => import('@paper-design/shaders-react').then((m) => m.HalftoneDots), { ssr: false });
@@ -11,6 +12,29 @@ const MENU_LINK = 'press font-mono text-[12px] font-medium text-moss hover:text-
 
 export default function HalftoneHero() {
   const openFrom = useOpenOverlay();
+  const imageRef = useRef<HTMLDivElement>(null);
+
+  // The intro (image → title → dates) waits until the shader has the photo: it adds its canvas once the image has decoded
+  useEffect(() => {
+    const wrap = imageRef.current!;
+    let frame = 0;
+    const setReady = () => document.documentElement.setAttribute('data-hero-ready', '');
+    // Give the canvas a frame to draw before revealing it
+    const start = () => (frame = requestAnimationFrame(() => (frame = requestAnimationFrame(setReady))));
+    const observer = new MutationObserver(() => {
+      if (!wrap.querySelector('canvas')) return;
+      observer.disconnect();
+      start();
+    });
+    observer.observe(wrap, { childList: true, subtree: true });
+    // Don't hold the title back forever if WebGL is unavailable or the image is slow
+    const fallback = setTimeout(setReady, 3000);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+      clearTimeout(fallback);
+    };
+  }, []);
 
   return (
     <>
@@ -20,7 +44,7 @@ export default function HalftoneHero() {
       <button onClick={openFrom('newsletter')} aria-haspopup="dialog" className={MENU_LINK}>Newsletter</button>
     </nav>
     <section className="relative w-full aspect-[4/3] md:aspect-auto md:flex-1 md:min-h-0 bg-mint overflow-hidden [container-type:size] md:[container-type:inline-size]">
-      <div className="intro-fade absolute inset-0">
+      <div ref={imageRef} className="intro-fade absolute inset-0">
         <HalftoneDots
           image="/holladay.jpg"
           colorBack="#aeff9e"
