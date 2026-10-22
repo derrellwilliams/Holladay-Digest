@@ -36,7 +36,7 @@ export default function NewsletterOverlay({ origin, onClose }: { origin: DOMRect
       <div className="px-5 md:px-10 pb-24">
         <motion.h2
           variants={riseItem}
-          className="font-sans font-black uppercase text-lime text-[18vw] md:text-[11vw] leading-[0.85]"
+          className="font-sans font-black uppercase text-lime text-[12vw] md:text-[7vw] leading-[0.85]"
         >
           Get the Digest
         </motion.h2>
@@ -53,7 +53,7 @@ export default function NewsletterOverlay({ origin, onClose }: { origin: DOMRect
                 initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: 8 }}
                 animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0, transition: { type: 'spring', duration: 0.5, bounce: 0.2 } }}
               >
-                <p className="font-sans font-black uppercase text-5xl md:text-7xl text-lime">You&rsquo;re in.</p>
+                <p className="font-sans font-black uppercase text-4xl md:text-6xl text-lime">You&rsquo;re in.</p>
                 <p className="font-sans text-sm text-paper/70 mt-3">We&rsquo;ll email you when new minutes are posted.</p>
               </motion.div>
             ) : (

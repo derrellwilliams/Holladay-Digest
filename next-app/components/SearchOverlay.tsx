@@ -59,13 +59,13 @@ export default function SearchOverlay({ origin, onClose }: { origin: DOMRect | n
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="SEARCH"
             aria-label="Search meetings"
-            className="w-full bg-transparent border-b-2 border-lime/30 focus:border-lime outline-none font-sans font-black uppercase text-lime placeholder:text-lime/25 text-[15vw] md:text-[10vw] leading-[0.9] pb-2 transition-colors duration-200"
+            className="w-full bg-transparent border-b-2 border-lime/30 focus:border-lime outline-none font-sans font-black uppercase text-lime placeholder:text-lime/25 text-[11vw] md:text-[6.5vw] leading-[0.9] pb-2 transition-colors duration-200"
           />
         </motion.div>
 
         <motion.p variants={riseItem} className="font-mono text-sm text-lime/60 mt-5" aria-live="polite">
           {results === null
-            ? 'Try “ADU”, “budget”, or “parking”. Press Esc to close.'
+            ? 'Try “ADU”, “budget”, or “parking”.'
             : `${results.length} ${results.length === 1 ? 'meeting' : 'meetings'} mention “${term}”`}
         </motion.p>
 

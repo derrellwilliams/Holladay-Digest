@@ -10,13 +10,13 @@ export default function AboutOverlay({ origin, onClose }: { origin: DOMRect | nu
       <div className="px-5 md:px-10 pb-24">
         <motion.h2
           variants={riseItem}
-          className="font-sans font-black uppercase text-lime text-[18vw] md:text-[11vw] leading-[0.85]"
+          className="font-sans font-bold text-paper text-lg md:text-xl leading-relaxed"
         >
           What is this?
         </motion.h2>
 
         <motion.div variants={riseItem}>
-          <AboutText className="mt-10 max-w-2xl" />
+          <AboutText className="mt-6 max-w-2xl" />
         </motion.div>
 
         <motion.p variants={riseItem} className="mt-10 font-mono text-sm text-paper/60">
