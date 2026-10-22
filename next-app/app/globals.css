@@ -48,12 +48,12 @@ body {
   display: none;
 }
 
-/* Meeting list rows: hover mirrors the active block, in the sheet's pine green */
+/* Meeting dates: hover brightens toward the active lime */
 .list-link {
-  transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out);
+  transition: color 150ms ease;
 }
 @media (hover: hover) {
-  .list-link:not([aria-current]):hover { background-color: #0F1A0D; }
+  .list-link:not([aria-current]):hover { color: #B8D9AE; }
 }
 
 .press {
@@ -73,12 +73,4 @@ body {
   .press:active {
     transform: none;
   }
-}
-
-/* Dim the hero while a meeting panel is open */
-.hero {
-  transition: opacity 450ms var(--ease-drawer);
-}
-body:has(#meeting-panel) .hero {
-  opacity: 0.6;
 }

@@ -1,11 +1,9 @@
-import { getMeetings, getMeeting } from '@/lib/db';
+import { getMeetings } from '@/lib/db';
 import { getCanonicalType } from '@/lib/meetingColors';
-import { formatDotDate, randomButtonSpots } from '@/lib/utils';
-import Masthead from '@/components/Masthead';
-import MeetingList from '@/components/MeetingList';
+import { formatDotDate } from '@/lib/utils';
+import { OverlayProvider } from '@/components/Overlays';
 import HalftoneHero from '@/components/HalftoneHero';
-import MeetingPanel from '@/components/MeetingPanel';
-import MeetingSummary from '@/components/MeetingSummary';
+import MeetingBrowser from '@/components/MeetingBrowser';
 
 export default async function DashboardPage({
   searchParams,
@@ -14,32 +12,26 @@ export default async function DashboardPage({
 }) {
   const { m } = await searchParams;
 
-  const meetings = getMeetings().map((meeting) => ({
+  const meetings = getMeetings();
+  const items = meetings.map((meeting) => ({
     id: meeting.id,
-    date: formatDotDate(meeting.meeting_date),
+    date: formatDotDate(meeting.meeting_date, '/'),
     type: getCanonicalType(meeting.meeting_type),
   }));
 
-  const id = m ? parseInt(m, 10) : NaN;
-  const selected = id > 0 ? getMeeting(id) : null;
+  // ?m=<id> opens the feed at that meeting; otherwise it starts at the welcome text
+  const requested = m ? parseInt(m, 10) : NaN;
+  const initialId = items.some((x) => x.id === requested) ? requested : null;
 
   return (
-    <>
-      <div className="flex flex-col md:h-dvh md:overflow-hidden">
-        <Masthead />
-        <div className="flex flex-col-reverse md:flex-row flex-1 min-h-0 md:pr-4 md:pb-9">
-          <div className="md:w-[344px] shrink-0 md:h-full">
-            <MeetingList meetings={meetings} activeId={selected?.id ?? null} />
-          </div>
-          <div className="flex-1 min-w-0 px-4 md:px-0">
-            <HalftoneHero spots={randomButtonSpots()} />
-          </div>
+    <OverlayProvider>
+      <div className="flex flex-col md:flex-row">
+        {/* Menu + image, pinned while the page scrolls the meeting feed; 60px margin top, left and bottom on desktop */}
+        <div className="px-5 md:px-0 md:pl-[60px] md:pb-[60px] md:flex-1 md:min-w-0 md:sticky md:top-0 md:self-start md:h-dvh md:flex md:flex-col">
+          <HalftoneHero />
         </div>
+        <MeetingBrowser items={items} meetings={meetings} initialId={initialId} />
       </div>
-
-      <MeetingPanel meetingId={selected?.id ?? null}>
-        {selected && <MeetingSummary meeting={selected} />}
-      </MeetingPanel>
-    </>
+    </OverlayProvider>
   );
 }

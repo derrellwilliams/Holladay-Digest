@@ -1,8 +1,6 @@
 'use client';
 
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useEffect, useRef } from 'react';
 
 export interface MeetingListItem {
   id: number;
@@ -10,48 +8,63 @@ export interface MeetingListItem {
   type: string;
 }
 
-export default function MeetingList({ meetings, activeId }: { meetings: MeetingListItem[]; activeId: number | null }) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [pendingId, setPendingId] = useState<number | null>(null);
+export default function MeetingList({
+  meetings,
+  activeId,
+  onSelect,
+}: {
+  meetings: MeetingListItem[];
+  activeId: number | null;
+  onSelect: (id: number) => void;
+}) {
+  const navRef = useRef<HTMLElement>(null);
 
-  // Light up the clicked row immediately while the server renders the panel
-  const shownId = isPending ? pendingId : activeId;
+  // Keep the active date in view as the feed scrolls (vertical list on desktop, horizontal strip on mobile)
+  useEffect(() => {
+    const nav = navRef.current;
+    const link = nav?.querySelector<HTMLElement>('[aria-current]');
+    if (!nav || !link) return;
+    const n = nav.getBoundingClientRect();
+    const l = link.getBoundingClientRect();
+    const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+    if (nav.scrollWidth > nav.clientWidth) {
+      if (l.left < n.left || l.right > n.right) nav.scrollTo({ left: nav.scrollLeft + l.left - n.left - 16, behavior });
+    } else if (l.top < n.top || l.bottom > n.bottom - 64) {
+      nav.scrollTo({ top: nav.scrollTop + l.top - n.top - n.height / 3, behavior });
+    }
+  }, [activeId]);
 
   const open = (e: React.MouseEvent, id: number) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey) return;
     e.preventDefault();
-    if (id === activeId) return;
-    setPendingId(id);
-    startTransition(() => router.push(`/?m=${id}`, { scroll: false }));
+    onSelect(id);
   };
 
   if (meetings.length === 0) {
     return (
-      <p className="font-mono text-sm text-lime/70 px-6 md:px-10 py-6">
+      <p className="font-mono text-sm text-lime/70 px-6 md:px-8 py-6">
         No meetings yet. Run the scraper to populate the database.
       </p>
     );
   }
 
   return (
-    <nav aria-label="Meetings" className="list-fade no-scrollbar h-full overflow-y-auto overscroll-contain pb-16">
-      <ul className="pl-6 md:pl-10 pr-6 py-3 md:py-1">
+    <nav ref={navRef} aria-label="Meetings" className="no-scrollbar md:list-fade h-full overflow-x-auto md:overflow-x-hidden md:overflow-y-auto overscroll-contain">
+      <ul className="flex md:block gap-6 px-5 py-4 md:px-16 md:pt-[47px] md:pb-16">
         {meetings.map((m, i) => {
-          const active = m.id === shownId;
+          const active = m.id === activeId;
           return (
-            <li key={m.id} className={i < 15 ? 'intro-row' : undefined} style={{ '--i': i } as React.CSSProperties}>
-              <Link
+            <li key={m.id} className={i < 20 ? 'intro-row shrink-0' : 'shrink-0'} style={{ '--i': i } as React.CSSProperties}>
+              <a
                 href={`/?m=${m.id}`}
-                scroll={false}
                 onClick={(e) => open(e, m.id)}
-                aria-current={active ? 'page' : undefined}
-                className={`list-link block -mx-2 px-2 py-[0.72rem] rounded font-mono text-[15px] md:text-base truncate ${
-                  active ? 'bg-lime text-forest' : 'text-lime'
-                }`}
+                aria-current={active ? 'location' : undefined}
+                title={m.type}
+                className={`list-link relative block md:py-[13px] font-mono text-[12px] tabular-nums ${active ? 'text-lime font-bold' : 'text-moss font-medium'}`}
               >
-                {m.date} {m.type}
-              </Link>
+                {m.date}
+                <span className="sr-only"> {m.type}</span>
+              </a>
             </li>
           );
         })}

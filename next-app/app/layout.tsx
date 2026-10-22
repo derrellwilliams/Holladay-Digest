@@ -1,18 +1,17 @@
 import type { Metadata } from 'next';
-import { Roboto, Roboto_Condensed, Roboto_Mono } from 'next/font/google';
+import { Roboto_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 
-const roboto = Roboto({
-  subsets: ['latin'],
-  weight: ['400', '500'],
+// Zalando Sans isn't in next/font/google's list yet — self-hosted latin files from Google Fonts
+const zalandoSans = localFont({
+  src: [
+    { path: './fonts/ZalandoSans-Regular.woff2', weight: '400' },
+    { path: './fonts/ZalandoSans-Medium.woff2', weight: '500' },
+    { path: './fonts/ZalandoSans-Bold.woff2', weight: '700' },
+    { path: './fonts/ZalandoSans-Black.woff2', weight: '900' },
+  ],
   variable: '--font-sans',
-  display: 'swap',
-});
-
-const robotoCondensed = Roboto_Condensed({
-  subsets: ['latin'],
-  weight: ['400', '700'],
-  variable: '--font-display',
   display: 'swap',
 });
 
@@ -41,7 +40,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${roboto.variable} ${robotoCondensed.variable} ${robotoMono.variable} font-sans bg-forest text-lime antialiased`}>
+      <body className={`${zalandoSans.variable} ${robotoMono.variable} font-sans bg-forest text-lime antialiased`}>
         <main id="page">{children}</main>
       </body>
     </html>

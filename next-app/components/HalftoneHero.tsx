@@ -1,43 +1,25 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { AnimatePresence } from 'motion/react';
-import { useEffect, useState } from 'react';
-import SearchOverlay from './SearchOverlay';
-import NewsletterOverlay from './NewsletterOverlay';
-import type { ButtonSpot } from '@/lib/utils';
+import { useOpenOverlay } from './Overlays';
 
 const HalftoneDots = dynamic(() => import('@paper-design/shaders-react').then((m) => m.HalftoneDots), { ssr: false });
 
-type OverlayState = { kind: 'search' | 'newsletter'; origin: DOMRect | null } | null;
+const LINES = ['Holladay', 'Digest'];
 
-const BUTTON = 'press absolute z-10 h-[42px] min-w-[140px] md:min-w-[204px] px-6 whitespace-nowrap rounded-md bg-forest text-lime font-mono text-[12px] sm:text-sm md:text-base font-bold uppercase tracking-wide shadow-[0_2px_0_rgba(0,0,0,0.25)] hover:bg-pine';
+const MENU_LINK = 'press font-mono text-[12px] font-medium text-moss hover:text-lime';
 
-export default function HalftoneHero({ spots }: { spots: [ButtonSpot, ButtonSpot] }) {
-  const [overlay, setOverlay] = useState<OverlayState>(null);
-  // Keep the first positions so the buttons don't move when a meeting opens (page re-renders)
-  const [[newsletterSpot, searchSpot]] = useState(spots);
-
-  const openFrom = (kind: 'search' | 'newsletter') => (e: React.MouseEvent<HTMLButtonElement>) =>
-    // Keyboard "clicks" (Enter/Space) report detail 0 — open instantly for those
-    setOverlay({ kind, origin: e.detail === 0 ? null : e.currentTarget.getBoundingClientRect() });
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const typing = e.target instanceof HTMLElement && e.target.closest('input, textarea, [contenteditable]');
-      if (((e.metaKey || e.ctrlKey) && e.key === 'k') || (e.key === '/' && !typing)) {
-        e.preventDefault();
-        setOverlay((current) => current ?? { kind: 'search', origin: null });
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
-
-  const close = () => setOverlay(null);
+export default function HalftoneHero() {
+  const openFrom = useOpenOverlay();
 
   return (
-    <section className="hero relative w-full aspect-[4/3] md:aspect-auto md:h-full md:min-h-[300px] bg-mint overflow-hidden">
+    <>
+    <nav aria-label="Site" className="shrink-0 h-14 md:h-[60px] flex items-center gap-10">
+      <button onClick={openFrom('about')} aria-haspopup="dialog" className={MENU_LINK}>About</button>
+      <button onClick={openFrom('search')} aria-haspopup="dialog" aria-keyshortcuts="Meta+K /" className={MENU_LINK}>Search</button>
+      <button onClick={openFrom('newsletter')} aria-haspopup="dialog" className={MENU_LINK}>Newsletter</button>
+    </nav>
+    <section className="relative w-full aspect-[4/3] md:aspect-auto md:flex-1 md:min-h-0 bg-mint overflow-hidden [container-type:size] md:[container-type:inline-size]">
       <div className="intro-fade absolute inset-0">
         <HalftoneDots
           image="/holladay.jpg"
@@ -47,7 +29,7 @@ export default function HalftoneHero({ spots }: { spots: [ButtonSpot, ButtonSpot
           type="gooey"
           grid="hex"
           inverted={false}
-          size={0.17}
+          size={0.13}
           radius={1.07}
           contrast={0.39}
           grainMixer={0.03}
@@ -61,26 +43,31 @@ export default function HalftoneHero({ spots }: { spots: [ButtonSpot, ButtonSpot
         />
       </div>
 
-      <button
-        onClick={openFrom('newsletter')}
-        className={BUTTON}
-        style={{ left: `${newsletterSpot.left}%`, top: `${newsletterSpot.top}%`, translate: `-${newsletterSpot.left}% 0` }}
+      {/* On mobile the heading covers the image to place the title in its upper third; only the title itself takes clicks */}
+      <h1
+        className="pointer-events-none absolute inset-0 flex flex-col justify-start pt-[14cqh] md:relative md:inset-auto md:block text-center font-sans font-black text-forest text-[12cqw] md:text-[min(104px,12.5cqw)] leading-[0.944] tracking-[-0.01em] md:pt-[9vh]"
       >
-        Email me updates
-      </button>
-      <button
-        onClick={openFrom('search')}
-        aria-keyshortcuts="Meta+K /"
-        className={BUTTON}
-        style={{ left: `${searchSpot.left}%`, top: `${searchSpot.top}%`, translate: `-${searchSpot.left}% 0` }}
-      >
-        Search
-      </button>
+        <button
+          onClick={openFrom('about')}
+          aria-label="Holladay Digest"
+          aria-haspopup="dialog"
+          className="press pointer-events-auto self-center inline-block cursor-pointer"
+        >
+          {LINES.map((line, l) => (
+            <span key={line} aria-hidden="true" className="block">
+              {line.split('').map((ch, i) => (
+                <span key={i} className="inline-block overflow-hidden align-top pb-[0.12em] -mb-[0.12em]">
+                  <span className="intro-letter inline-block" style={{ '--i': l * 8 + i } as React.CSSProperties}>
+                    {ch}
+                  </span>
+                </span>
+              ))}
+            </span>
+          ))}
+        </button>
+      </h1>
 
-      <AnimatePresence>
-        {overlay?.kind === 'search' && <SearchOverlay key="search" origin={overlay.origin} onClose={close} />}
-        {overlay?.kind === 'newsletter' && <NewsletterOverlay key="newsletter" origin={overlay.origin} onClose={close} />}
-      </AnimatePresence>
     </section>
+    </>
   );
 }

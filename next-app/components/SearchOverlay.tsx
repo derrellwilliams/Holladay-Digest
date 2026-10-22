@@ -11,7 +11,7 @@ function highlight(text: string, term: string) {
   const parts = text.split(new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
   return parts.map((part, i) =>
     part.toLowerCase() === term.toLowerCase()
-      ? <mark key={i} className="bg-lime text-forest rounded-sm px-0.5">{part}</mark>
+      ? <mark key={i} className="bg-lime/20 text-paper rounded-sm px-0.5">{part}</mark>
       : part
   );
 }
@@ -59,7 +59,7 @@ export default function SearchOverlay({ origin, onClose }: { origin: DOMRect | n
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="SEARCH"
             aria-label="Search meetings"
-            className="w-full bg-transparent border-b-2 border-lime/30 focus:border-lime outline-none font-display font-bold uppercase text-lime placeholder:text-lime/25 text-[15vw] md:text-[10vw] leading-[0.9] pb-2 transition-colors duration-200"
+            className="w-full bg-transparent border-b-2 border-lime/30 focus:border-lime outline-none font-sans font-black uppercase text-lime placeholder:text-lime/25 text-[15vw] md:text-[10vw] leading-[0.9] pb-2 transition-colors duration-200"
           />
         </motion.div>
 
@@ -71,28 +71,34 @@ export default function SearchOverlay({ origin, onClose }: { origin: DOMRect | n
 
         <ul className="mt-8 max-w-4xl">
           <AnimatePresence initial={false}>
-            {results?.map((r) => (
+            {results?.map((r, i) => (
               <motion.li
                 key={`${term}-${r.id}`}
                 initial={{ opacity: 0 }}
-                animate={{ opacity: 1, transition: { duration: 0.12 } }}
+                // Short stagger on the first few results; the rest appear with the last of them
+                animate={{ opacity: 1, transition: { duration: 0.12, delay: Math.min(i, 8) * 0.03 } }}
                 exit={{ opacity: 0, transition: { duration: 0 } }}
               >
                 <button
                   onClick={() => openMeeting(r.id)}
-                  className="group w-full text-left py-5 border-t border-lime/15"
+                  className="group w-full text-left py-8 border-t border-paper/10"
                 >
-                  <p className="font-mono text-base text-lime group-hover:text-paper transition-colors duration-150">
-                    {r.date} {r.type}
-                  </p>
+                  {/* Same type as a meeting card: mono date, Zalando title, square-bulleted lines */}
+                  <p className="font-mono text-[12px] text-paper/70">{r.date}</p>
+                  <h2 className="mt-3 font-sans text-2xl leading-tight text-paper group-hover:text-lime transition-colors duration-150">
+                    {r.title}
+                  </h2>
                   {r.snippets.length > 0 ? (
-                    <ul className="mt-2 space-y-1.5">
+                    <ul className="mt-5 space-y-3 text-[15px] md:text-[16px] leading-relaxed">
                       {r.snippets.map((s, i) => (
-                        <li key={i} className="text-sm leading-relaxed text-paper/80">{highlight(s, term)}</li>
+                        <li key={i} className="flex gap-3">
+                          <span aria-hidden="true" className="mt-[0.6em] h-1.5 w-1.5 shrink-0 bg-paper/30" />
+                          <span className="min-w-0 text-paper/85">{highlight(s, term)}</span>
+                        </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="mt-2 text-sm italic text-paper/40">Match found in full summary</p>
+                    <p className="mt-5 text-[13px] italic text-paper/45">Match found in full summary</p>
                   )}
                 </button>
               </motion.li>

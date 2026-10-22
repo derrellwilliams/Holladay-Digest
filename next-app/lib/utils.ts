@@ -15,38 +15,17 @@ function parseMeetingDate(dateStr: string | null): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-// 09·19·26
-export function formatDotDate(dateStr: string | null): string {
+// 09·19·26 (or 09/19/26 with sep '/')
+export function formatDotDate(dateStr: string | null, sep = '·'): string {
   const d = parseMeetingDate(dateStr);
   if (!d) return dateStr ?? '—';
   const pad = (n: number) => String(n).padStart(2, '0');
-  return [pad(d.getMonth() + 1), pad(d.getDate()), String(d.getFullYear()).slice(-2)].join('·');
+  return [pad(d.getMonth() + 1), pad(d.getDate()), String(d.getFullYear()).slice(-2)].join(sep);
 }
 
-// September 22nd, 2026
-export function formatLongDate(dateStr: string | null): string {
+// "October 2 2026"
+export function formatPlainDate(dateStr: string | null): string {
   const d = parseMeetingDate(dateStr);
-  if (!d) return dateStr ?? 'Unknown date';
-  const day = d.getDate();
-  const suffix = day % 10 === 1 && day !== 11 ? 'st' : day % 10 === 2 && day !== 12 ? 'nd' : day % 10 === 3 && day !== 13 ? 'rd' : 'th';
-  const month = d.toLocaleDateString('en-US', { month: 'long' });
-  return `${month} ${day}${suffix}, ${d.getFullYear()}`;
-}
-
-export interface ButtonSpot {
-  left: number; // % of hero width
-  top: number; // % of hero height
-}
-
-// Random spots for the hero's two buttons. `left` is where the button sits within the free space
-// (applied with a matching translate), so buttons of any width stay inside the hero.
-// Tops stay in the upper part of the photo (the bottom is dark and the buttons get lost there),
-// and the two are always at least 18% apart vertically so they never overlap.
-export function randomButtonSpots(): [ButtonSpot, ButtonSpot] {
-  const left = () => Math.round(6 + Math.random() * 88);
-  const upper = Math.round(6 + Math.random() * 12); // 6–18%
-  const lower = Math.round(upper + 18 + Math.random() * (36 - upper - 18)); // upper+18 … 36%
-  const a = { left: left(), top: upper };
-  const b = { left: left(), top: lower };
-  return Math.random() < 0.5 ? [a, b] : [b, a];
+  if (!d) return dateStr ?? '';
+  return `${d.toLocaleString('en-US', { month: 'long' })} ${d.getDate()} ${d.getFullYear()}`;
 }

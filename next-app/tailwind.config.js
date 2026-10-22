@@ -8,7 +8,6 @@ module.exports = {
     extend: {
       fontFamily: {
         sans: ['var(--font-sans)', 'sans-serif'],
-        display: ['var(--font-display)', 'sans-serif'],
         mono: ['var(--font-mono)', 'monospace'],
       },
       colors: {
@@ -18,8 +17,11 @@ module.exports = {
         mint: '#AEFF9E',
         soot: '#2B2B2B',
         paper: '#EEF2EA',
+        moss: '#7D9475',
       },
     },
   },
+  // hover: styles only apply on devices that can hover, so taps don't leave them stuck on
+  future: { hoverOnlyWhenSupported: true },
   plugins: [],
 };

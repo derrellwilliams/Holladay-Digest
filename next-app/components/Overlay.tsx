@@ -8,8 +8,8 @@ const IN_OUT = [0.77, 0, 0.175, 1] as const;
 
 // Fill order for staggered content inside an overlay
 export const riseItem: Variants = {
-  hidden: { opacity: 0, y: 16 },
-  shown: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.23, 1, 0.32, 1] } },
+  hidden: { opacity: 0, transform: 'translateY(16px)' },
+  shown: { opacity: 1, transform: 'translateY(0px)', transition: { duration: 0.5, ease: [0.23, 1, 0.32, 1] } },
 };
 
 interface OverlayProps {
@@ -84,7 +84,7 @@ export default function Overlay({ label, origin, onClose, children }: OverlayPro
           <button
             onClick={onClose}
             aria-label="Close"
-            className="press text-lime/70 hover:text-lime transition-colors p-2 -mr-2"
+            className="press text-lime/70 hover:text-lime p-2 -mr-2"
           >
             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true">
               <path d="M5 5l14 14M19 5L5 19" />
