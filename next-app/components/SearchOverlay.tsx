@@ -57,9 +57,9 @@ export default function SearchOverlay({ origin, onClose }: { origin: DOMRect | n
             autoFocus
             value={query}
             onChange={(e) => handleSearch(e.target.value)}
-            placeholder="SEARCH"
+            placeholder="Search"
             aria-label="Search meetings"
-            className="w-full bg-transparent border-b-2 border-lime/30 focus:border-lime outline-none font-sans font-black uppercase text-lime placeholder:text-lime/25 text-[11vw] md:text-[6.5vw] leading-[0.9] pb-2 transition-colors duration-200"
+            className="w-full bg-transparent border-b-2 border-lime/30 focus:border-lime outline-none font-sans font-bold text-paper placeholder:text-paper/40 text-lg md:text-xl leading-relaxed py-3 transition-colors duration-200"
           />
         </motion.div>
 

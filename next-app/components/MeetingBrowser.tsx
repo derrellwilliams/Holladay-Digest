@@ -156,7 +156,7 @@ export default function MeetingBrowser({
         className="flex-1 md:flex-none md:w-[42%] min-w-0 md:pr-12 text-paper [overflow-anchor:none]"
       >
         {/* Desktop only: fills the column minus a peek of the first meeting; text sits at the top, level with the first date. On mobile the first meeting sits right under the date strip (About is in the menu) */}
-        <section aria-label="About Holladay Digest" className="intro-copy hidden md:block md:pt-[52px] md:min-h-[calc(100dvh-240px)]">
+        <section aria-label="About Holladay Digest" className="intro-copy hidden md:block md:pt-[52px] md:min-h-[calc(100dvh-300px)]">
           <AboutText className="max-w-2xl" />
         </section>
         {meetings.map((m, i) => (

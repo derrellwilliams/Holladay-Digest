@@ -36,12 +36,12 @@ export default function NewsletterOverlay({ origin, onClose }: { origin: DOMRect
       <div className="px-5 md:px-10 pb-24">
         <motion.h2
           variants={riseItem}
-          className="font-sans font-black uppercase text-lime text-[12vw] md:text-[7vw] leading-[0.85]"
+          className="font-sans font-bold text-paper text-lg md:text-xl leading-relaxed"
         >
           Get the Digest
         </motion.h2>
 
-        <motion.p variants={riseItem} className="font-sans text-base md:text-lg text-paper/80 mt-6">
+        <motion.p variants={riseItem} className="font-sans text-lg md:text-xl leading-relaxed text-paper/85 mt-6">
           Meeting notes delivered to your inbox the moment they&rsquo;re ready.
         </motion.p>
 
@@ -53,7 +53,7 @@ export default function NewsletterOverlay({ origin, onClose }: { origin: DOMRect
                 initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: 8 }}
                 animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0, transition: { type: 'spring', duration: 0.5, bounce: 0.2 } }}
               >
-                <p className="font-sans font-black uppercase text-4xl md:text-6xl text-lime">You&rsquo;re in.</p>
+                <p className="font-sans font-bold text-lg md:text-xl text-paper">You&rsquo;re in.</p>
                 <p className="font-sans text-sm text-paper/70 mt-3">We&rsquo;ll email you when new minutes are posted.</p>
               </motion.div>
             ) : (
@@ -73,7 +73,7 @@ export default function NewsletterOverlay({ origin, onClose }: { origin: DOMRect
                     required
                     aria-label="Email address"
                     aria-invalid={status === 'error'}
-                    className="flex-1 min-w-0 bg-transparent border-b-2 border-lime/30 focus:border-lime outline-none font-sans text-xl md:text-2xl text-lime placeholder:text-lime/30 py-3 transition-colors duration-200"
+                    className="flex-1 min-w-0 bg-transparent border-b-2 border-lime/30 focus:border-lime outline-none font-sans text-lg md:text-xl text-lime placeholder:text-lime/30 py-3 transition-colors duration-200"
                   />
                   <button
                     type="submit"
