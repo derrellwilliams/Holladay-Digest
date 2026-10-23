@@ -263,18 +263,69 @@ Be concise but complete. Use dates and names exactly as written in the document.
 """
 
 
+SUMMARY_MODEL = "claude-opus-5-5"
+
+
+class SummaryError(Exception):
+    """The model returned no usable summary (declined, or ran out of tokens)."""
+
+
 def summarize(client: anthropic.Anthropic, text: str, meeting_type: str, meeting_date: Optional[str]) -> str:
     prompt = SUMMARY_PROMPT.format(
         meeting_type=meeting_type,
         meeting_date=meeting_date or "unknown",
-        text=text[:15000],  # stay within context limits
+        text=text,  # the full minutes; the model's 1M-token context fits any meeting
     )
-    msg = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=2048,
+    msg = client.beta.messages.create(
+        model=SUMMARY_MODEL,
+        # Thinking is always on and counts toward this limit, so leave plenty of room
+        max_tokens=16000,
+        output_config={"effort": "high"},
+        # If a safety classifier declines, the API retries on Anthropic's recommended fallback model
+        betas=["server-side-fallback-2026-07-01"],
+        fallbacks="default",
         messages=[{"role": "user", "content": prompt}],
     )
-    return msg.content[0].text
+    if msg.stop_reason == "refusal":
+        raise SummaryError(f"declined ({msg.stop_details.category if msg.stop_details else 'no category'})")
+    if msg.stop_reason == "max_tokens":
+        raise SummaryError("hit max_tokens before finishing")
+    # The response also carries thinking blocks; the summary is the text
+    summary = "".join(block.text for block in msg.content if block.type == "text").strip()
+    if not summary:
+        raise SummaryError("empty response")
+    return summary
+
+
+def resummarize_latest(conn: sqlite3.Connection, claude: anthropic.Anthropic, session: requests.Session, count: int) -> None:
+    """Re-run the summary for the `count` most recent meetings in place (same row, so ?m= links keep working). Sends no email."""
+    rows = conn.execute("SELECT id, meeting_type, meeting_date, pdf_url FROM meeting_summaries").fetchall()
+    rows.sort(key=lambda r: datetime.strptime(r[2], "%b %d, %Y") if r[2] else datetime.min, reverse=True)
+
+    for i, (row_id, meeting_type, meeting_date, url) in enumerate(rows[:count], 1):
+        print(f"[{i}/{count}] {meeting_type} | {meeting_date}  (id {row_id})")
+        if "GetMinutesFile" in url:
+            mid_match = re.search(r"mid=(\d+)", url)
+            mid = mid_match.group(1) if mid_match else str(abs(hash(url)))
+            safe_type = re.sub(r"[^\w]", "_", meeting_type)
+            pdf_path = PDF_DIR / f"{safe_type}_{mid}.pdf"
+            if not download_pdf(session, url, pdf_path):
+                continue
+            text = extract_text(pdf_path)
+        else:
+            text = fetch_transcript(session, url)
+        if not text.strip():
+            print("  no text found, skipping.")
+            continue
+        print(f"  {len(text):,} chars → summarizing...", end=" ", flush=True)
+        try:
+            summary = summarize(claude, text, meeting_type, meeting_date)
+        except (anthropic.APIError, SummaryError) as e:
+            print(f"failed: {e}")
+            continue
+        conn.execute("UPDATE meeting_summaries SET summary = ? WHERE id = ?", (summary, row_id))
+        conn.commit()
+        print(f"OK ({len(summary):,} chars)")
 
 
 # ── Summary → email HTML (mirrors next-app/components/MeetingSummary.tsx) ─────
@@ -693,6 +744,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Scrape meeting minutes from a OneSuite city portal.")
     parser.add_argument("--url", default=os.environ.get("ONESUITE_URL") or DEFAULT_BASE_URL, help="Base URL of the OneSuite portal (e.g. https://yourcity.suiteonemedia.com)")
     parser.add_argument("--recent", action="store_true", help="Only check the last 90 days")
+    parser.add_argument("--resummarize", type=int, metavar="N", help="Re-summarize the N most recent meetings already in the database, then stop (no email)")
     args = parser.parse_args()
 
     base_url = args.url.rstrip("/")
@@ -709,6 +761,11 @@ def main() -> None:
     processed = load_processed(conn)
     claude = anthropic.Anthropic(api_key=api_key)
     session = requests.Session()
+
+    if args.resummarize:
+        resummarize_latest(conn, claude, session, args.resummarize)
+        conn.close()
+        return
 
     print(f"Previously processed: {len(processed)} PDFs\n")
 
@@ -765,8 +822,8 @@ def main() -> None:
         print("  Summarizing with Claude...", end=" ", flush=True)
         try:
             summary = summarize(claude, text, meeting_type, meeting_date)
-        except anthropic.APIError as e:
-            print(f"API error: {e}")
+        except (anthropic.APIError, SummaryError) as e:
+            print(f"failed: {e}")
             continue
         print("OK")
 

@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '0 6 * * *'  # 6am UTC = midnight MT
   workflow_dispatch:       # allow manual trigger from GitHub UI
+    inputs:
+      resummarize:
+        description: 'Re-summarize the N most recent meetings instead of scraping (blank = normal run)'
+        required: false
+        default: ''
 
 jobs:
   scrape:
@@ -31,7 +36,13 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ONESUITE_URL: ${{ secrets.ONESUITE_URL }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-        run: python scraper.py --recent
+          RESUMMARIZE: ${{ inputs.resummarize }}
+        run: |
+          if [ -n "$RESUMMARIZE" ]; then
+            python scraper.py --resummarize "$RESUMMARIZE"
+          else
+            python scraper.py --recent
+          fi
 
       - name: Commit and push if DB changed
         run: |
