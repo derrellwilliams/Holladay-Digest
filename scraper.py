@@ -256,7 +256,11 @@ Provide a structured summary with these sections:
 6. **Action Items** — Tasks assigned or follow-up actions, with responsible parties.
 7. **Other Notable Items** — Public comments, announcements, or anything significant.
 
-Be concise but complete. Use dates and names exactly as written in the document.
+The city is Holladay, Utah. Always spell it "Holladay", including in place names (Holladay Village, Holladay Blvd, Murray Holladay Road). Machine transcripts often mishear it as "Holiday".
+
+Many sources are machine transcripts that spell the same person's name several ways. Choose the most likely spelling for each person and use it consistently. Don't list alternate spellings or comment on transcript quality.
+
+Keep the whole summary to roughly 400–800 words, depending on how much happened. Spend the words on what a resident cares about: decisions, votes, money, locations, and the substance of public concerns. Leave out minor logistics such as phone numbers, scheduling chatter, and housekeeping remarks. Use dates as written in the document.
 
 --- MEETING MINUTES ---
 {text}
