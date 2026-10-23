@@ -1,160 +1,72 @@
-# OneSuite Digest
+# Holladay Digest
 
-An open-source tool for browsing city meeting minutes with AI-generated summaries and email alerts. Works with any city that uses the [OneSuite](https://suiteonemedia.com) government portal platform.
+Plain-language AI summaries of every Holladay, UT City Council and Planning Commission meeting. Live at [holladay.fyi](https://holladay.fyi).
 
-Built for Holladay, UT — live at [holladay.fyi](https://holladay.fyi). Adaptable to any OneSuite municipality in minutes.
-
-
-## Features
-
-- Browse City Council and Planning Commission meeting minutes
-- Filter by meeting type, year, and month
-- Search across all summaries with highlighted matches
-- AI-generated structured summaries with key topics, decisions, and votes
-- Links to original PDF for each meeting
-- Automatically updates nightly when new minutes are posted
-- Email alerts — subscribers get a full summary digest the moment new minutes are available
-
-## Stack
-
-- **Scraper** — Python, pdfplumber, Anthropic Claude API
-- **Email** — Resend (subscriber management + digest delivery)
-- **Automation** — GitHub Actions (nightly cron)
-- **Web app** — Next.js 15, Tailwind CSS, better-sqlite3
-- **Storage** — SQLite (`meeting_summaries.db`, committed to repo)
-- **Hosting** — Vercel (auto-deploys on DB update)
+It works with any city that publishes minutes on the [OneSuite](https://suiteonemedia.com) portal.
 
 ## How it works
 
 ```
-Nightly (midnight MT)
-  → GitHub Actions checks the city website for new minutes PDFs
-  → If new: downloads PDF, extracts text, summarizes with Claude
-  → Commits updated database to main
-  → Vercel detects the push and redeploys the site
-  → Sends email digest to all subscribers via Resend
+Nightly (GitHub Actions)
+  → check the city's OneSuite portal for new minutes
+  → read the PDF or transcript and summarize it with Claude
+  → commit the updated SQLite database to main (Vercel redeploys)
+  → email the summary to subscribers via Resend
 ```
 
-No API calls are made if nothing is new — zero cost on empty runs.
+If nothing is new, nothing is summarized and nothing is spent.
 
----
+On the site, pick a date or scroll through every meeting. Search all summaries with ⌘K, or sign up for email.
 
-## Using this for your city
+## Stack
 
-If your city uses OneSuite, you can run this against their portal with one flag:
+- **Scraper:** Python, pdfplumber, BeautifulSoup, Anthropic API (Claude Opus 5.5)
+- **Web:** Next.js 15, Tailwind CSS, better-sqlite3, Motion
+- **Data:** SQLite (`meeting_summaries.db`, committed to the repo)
+- **Email:** Resend
+- **Hosting:** Vercel, with GitHub Actions running the scraper
+
+## Run it
 
 ```bash
-python3 scraper.py --url https://yourcity.suiteonemedia.com
+# Scraper
+pip install anthropic pdfplumber requests beautifulsoup4
+export ANTHROPIC_API_KEY=sk-ant-...
+python scraper.py --recent            # last 90 days (omit for everything since 2020)
+python scraper.py --resummarize 5     # redo the 5 newest summaries
+
+# Web app (Node 22)
+cd next-app && npm install && npm run dev   # http://localhost:3001
 ```
 
-Or set the environment variable and omit the flag:
+Re-running is safe because the database tracks what's already been processed.
+
+## Use it for your city
 
 ```bash
-export ONESUITE_URL="https://yourcity.suiteonemedia.com"
-python3 scraper.py
+python scraper.py --url https://yourcity.suiteonemedia.com
 ```
 
-To find your city's OneSuite URL, look for a link to "City Council Minutes" or "Meeting Minutes" on your city's website — it will redirect to a `suiteonemedia.com` subdomain.
+You can also set `ONESUITE_URL`. To find your city's URL, follow the "Meeting Minutes" link on the city website. Then make these changes:
 
-> **Note:** Some cities only publish agendas, not minutes PDFs. The scraper handles this gracefully — it skips any meeting row that doesn't have a minutes link.
+- In `scraper.py`, change the city name in `SUMMARY_PROMPT`, the Resend `audience_id` and the `from` address.
+- In `next-app`, set `RESEND_AUDIENCE_ID`.
 
----
+## Deploy
 
-## Setup
+1. **GitHub Actions:** add the repo secrets `ANTHROPIC_API_KEY`, `RESEND_API_KEY` and, optionally, `ONESUITE_URL`. The workflow `.github/workflows/scrape.yml` runs nightly. You can also run it from the Actions tab, with an optional "re-summarize N" input.
+2. **Vercel:** import the repo, set the root directory to `next-app`, and add `RESEND_API_KEY` (and optionally `RESEND_AUDIENCE_ID`).
 
-### 1. Scraper (local / initial population)
-
-Install dependencies:
-```bash
-pip3 install anthropic pdfplumber requests beautifulsoup4
-```
-
-Set your Anthropic API key:
-```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
-```
-
-Run the full historical scrape (2020 onwards):
-```bash
-python3 scraper.py --url https://yourcity.suiteonemedia.com
-```
-
-Or check only the last 90 days:
-```bash
-python3 scraper.py --url https://yourcity.suiteonemedia.com --recent
-```
-
-The scraper uses the database itself to track what's been processed — re-running is safe, no duplicates.
-
-### 2. Web App (local)
-
-```bash
-cd next-app
-npm install
-npm run dev
-```
-
-Create `next-app/.env.local` with your keys:
-```
-RESEND_API_KEY=re_...
-```
-
-Visit [http://localhost:3001](http://localhost:3001).
-
-### 3. Email alerts (Resend)
-
-1. Create a free account at [resend.com](https://resend.com)
-2. Add and verify your sending domain under **Domains**
-3. Note your **Audience ID** from the Audience page (via the API: `curl -H "Authorization: Bearer YOUR_KEY" https://api.resend.com/audiences`)
-4. Update the `AUDIENCE_ID` and `from` address in `scraper.py`
-
-Subscribers sign up via the form on the site. The scraper sends them a full HTML summary email whenever new minutes are found.
-
-### 4. Automated nightly updates (GitHub Actions)
-
-Add repository secrets under **Settings → Secrets and variables → Actions**:
-
-| Secret | Value |
-|--------|-------|
-| `ANTHROPIC_API_KEY` | Your Anthropic API key |
-| `RESEND_API_KEY` | Your Resend API key |
-| `ONESUITE_URL` | Your city's OneSuite URL (optional — defaults to Holladay) |
-
-The workflow (`.github/workflows/scrape.yml`) runs automatically every night. Trigger it manually anytime from the **Actions** tab.
-
-### 5. Hosting on Vercel
-
-1. Import the repo into Vercel
-2. Set **Root Directory** to `next-app`
-3. Add `RESEND_API_KEY` under **Settings → Environment Variables**
-4. Deploy — Vercel will auto-redeploy whenever the scraper commits a DB update
-
----
-
-## Project Structure
+## Layout
 
 ```
-/
-├── scraper.py                    # Scrapes PDFs, summarizes with Claude, sends email digest
-├── meeting_summaries.db          # SQLite database (committed to repo)
-├── pdfs/                         # Downloaded PDFs (git-ignored, transient)
-├── .github/workflows/scrape.yml  # Nightly automation
-└── next-app/
-    ├── app/
-    │   ├── page.tsx                  # Dashboard
-    │   ├── meetings/[id]/page.tsx    # Meeting detail
-    │   └── api/subscribe/route.ts    # Email signup endpoint
-    ├── components/
-    │   ├── EmailSignup.tsx           # Signup card
-    │   ├── MeetingCard.tsx
-    │   └── Sidebar.tsx
-    └── lib/
-        ├── db.ts                     # SQLite queries
-        ├── meetingColors.ts          # Type labels
-        └── utils.ts                  # Shared utilities
+scraper.py                 scrape, summarize, email
+meeting_summaries.db       all summaries
+.github/workflows/         nightly scrape
+next-app/
+  app/page.tsx             hero, date nav and meeting feed
+  app/actions.ts           search
+  app/api/subscribe/       email signup
+  components/              MeetingBrowser, MeetingList, MeetingSummary, HalftoneHero, overlays
+  lib/                     db queries, meeting types, date formatting
 ```
-
-## Notes
-
-- Tested against Holladay, UT (`holladayut.suiteonemedia.com`). Other OneSuite instances should work but are not guaranteed — the page structure may vary slightly.
-- Node.js 22.x is required (pinned in `package.json`) for `better-sqlite3` compatibility on Vercel.
