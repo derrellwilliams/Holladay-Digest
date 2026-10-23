@@ -4,8 +4,6 @@ An open-source tool for browsing city meeting minutes with AI-generated summarie
 
 Built for Holladay, UT — live at [holladay.fyi](https://holladay.fyi). Adaptable to any OneSuite municipality in minutes.
 
-<img width="1268" height="804" alt="Screenshot 2026-09-23 at 5 07 06 PM" src="https://github.com/user-attachments/assets/9475b537-da0a-4675-b84a-98750b4d3f86" />
-
 
 ## Features
 
