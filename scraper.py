@@ -334,16 +334,13 @@ def resummarize_latest(conn: sqlite3.Connection, claude: anthropic.Anthropic, se
 
 
 # ── Summary → email HTML (mirrors next-app/components/MeetingSummary.tsx) ─────
-# Matches the site: Roboto Condensed / Roboto Mono / Roboto, with fallbacks for clients that block web fonts
-EMAIL_DISPLAY = "'Roboto Condensed','Arial Narrow',Arial,sans-serif"
+# Matches the site: Zalando Sans / Roboto Mono, with fallbacks for clients that block web fonts
+EMAIL_SANS = "'Zalando Sans','Helvetica Neue',Arial,sans-serif"
 EMAIL_MONO = "'Roboto Mono',Menlo,Consolas,monospace"
-EMAIL_SANS = "Roboto,'Helvetica Neue',Arial,sans-serif"
-# Static capture of the site's halftone hero (next-app/public/email-halftone.jpg), served by the deployed site
-EMAIL_HALFTONE_URL = "https://www.holladay.fyi/email-halftone.jpg"
+SITE_URL = "https://www.holladay.fyi"
 
 PINE = (0x0F, 0x1A, 0x0D)
 PAPER = (0xEE, 0xF2, 0xEA)
-LIME = (0x8F, 0xFF, 0x7A)
 
 
 def _mix(fg: tuple, alpha: float, bg: tuple = PINE) -> str:
@@ -479,8 +476,8 @@ def _inline(text: str) -> str:
     return re.sub(r"\*([^*\s][^*]*)\*", r"<em>\1</em>", text)
 
 
-def _p(text: str, color: str, size: int = 15, extra: str = "") -> str:
-    return f'<p style="margin:0 0 14px 0;font-family:{EMAIL_SANS};font-size:{size}px;line-height:1.6;color:{color};{extra}">{text}</p>'
+def _p(text: str, color: str, size: int = 16, extra: str = "") -> str:
+    return f'<p style="margin:0 0 16px 0;font-family:{EMAIL_SANS};font-size:{size}px;line-height:1.625;color:{color};{extra}">{text}</p>'
 
 
 def _note(text: str) -> str:
@@ -488,35 +485,35 @@ def _note(text: str) -> str:
 
 
 def _mono_label(text: str, color: str) -> str:
-    return f'<span style="font-family:{EMAIL_MONO};font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:{color};">{html.escape(text)}</span>'
+    return f'<span style="font-family:{EMAIL_MONO};font-size:12px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:{color};">{html.escape(text)}</span>'
 
 
 def _render_children(children: list[dict]) -> str:
     kids = "".join(
-        f'<p style="margin:0 0 6px 0;font-family:{EMAIL_SANS};font-size:14px;line-height:1.6;color:{_mix(PAPER, 0.65)};">'
+        f'<p style="margin:0 0 6px 0;font-family:{EMAIL_SANS};font-size:15px;line-height:1.6;color:{_mix(PAPER, 0.65)};">'
         + (f'<span style="font-weight:500;color:{_mix(PAPER, 0.85)};">{_inline(c["label"])}: </span>' if c["label"] else "")
         + f'{_inline(c["body"])}</p>'
         for c in children
     )
-    return f'<div style="margin-top:8px;padding-left:14px;border-left:1px solid {_mix(LIME, 0.15)};">{kids}</div>'
+    return f'<div style="margin-top:8px;padding-left:14px;border-left:1px solid {_mix(PAPER, 0.1)};">{kids}</div>'
 
 
 def _render_item(item: dict, dim_housekeeping: bool) -> str:
     children = _render_children(item["children"]) if item["children"] else ""
 
-    # Plain items get a small lime square with a hanging indent; labeled items are marked by their label
+    # Plain items get a small square with a hanging indent; labeled items are marked by their label
     if not item["label"]:
         return (
             '<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 14px 0;"><tr>'
-            f'<td valign="top" width="18" style="width:18px;padding-top:9px;"><div style="width:6px;height:6px;font-size:0;line-height:0;background:{_mix(LIME, 0.7)};">&nbsp;</div></td>'
-            f'<td valign="top"><p style="margin:0;font-family:{EMAIL_SANS};font-size:15px;line-height:1.6;color:{_mix(PAPER, 0.85)};">{_inline(item["body"])}</p>{children}</td>'
+            f'<td valign="top" width="18" style="width:18px;padding-top:10px;"><div style="width:6px;height:6px;font-size:0;line-height:0;background:{_mix(PAPER, 0.3)};">&nbsp;</div></td>'
+            f'<td valign="top"><p style="margin:0;font-family:{EMAIL_SANS};font-size:16px;line-height:1.6;color:{_mix(PAPER, 0.85)};">{_inline(item["body"])}</p>{children}</td>'
             "</tr></table>"
         )
 
     dim = dim_housekeeping and HOUSEKEEPING.search(item["label"])
-    out = [f'<p style="margin:0;font-family:{EMAIL_DISPLAY};font-weight:700;font-size:{15 if dim else 17}px;line-height:1.3;color:{_mix(PAPER, 0.6 if dim else 1)};">{_inline(item["label"])}</p>']
+    out = [f'<p style="margin:0;font-family:{EMAIL_SANS};font-weight:700;font-size:{15 if dim else 17}px;line-height:1.3;color:{_mix(PAPER, 0.6 if dim else 1)};">{_inline(item["label"])}</p>']
     if item["body"]:
-        out.append(f'<p style="margin:4px 0 0 0;font-family:{EMAIL_SANS};font-size:{14 if dim else 15}px;line-height:1.6;color:{_mix(PAPER, 0.5 if dim else 0.75)};">{_inline(item["body"])}</p>')
+        out.append(f'<p style="margin:4px 0 0 0;font-family:{EMAIL_SANS};font-size:{14 if dim else 16}px;line-height:1.625;color:{_mix(PAPER, 0.5 if dim else 0.75)};">{_inline(item["body"])}</p>')
     return f'<div style="margin:0 0 16px 0;">{"".join(out)}{children}</div>'
 
 
@@ -525,8 +522,8 @@ def _render_table(block: dict, section_key: str) -> str:
     # Two columns (Field | Details, Member | Vote, Motion | …) read best as label/value pairs
     if section_key != "actions" and rows and all(len(r) == 2 for r in rows):
         trs = "".join(
-            f'<tr><td valign="top" style="padding:3px 16px 3px 0;width:130px;">{_mono_label(r[0].replace("**", ""), _mix(LIME, 0.7))}</td>'
-            f'<td valign="top" style="padding:2px 0;font-family:{EMAIL_SANS};font-size:15px;line-height:1.5;color:{_mix(PAPER, 0.85)};">{_inline(r[1])}</td></tr>'
+            f'<tr><td valign="top" style="padding:3px 16px 3px 0;width:130px;">{_mono_label(r[0].replace("**", ""), _mix(PAPER, 0.5))}</td>'
+            f'<td valign="top" style="padding:2px 0;font-family:{EMAIL_SANS};font-size:16px;line-height:1.5;color:{_mix(PAPER, 0.85)};">{_inline(r[1])}</td></tr>'
             for r in rows
         )
         return f'<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 16px 0;">{trs}</table>'
@@ -541,14 +538,14 @@ def _render_table(block: dict, section_key: str) -> str:
                 continue
             if col == responsible_col:
                 tags.append(
-                    f'<span style="display:inline-block;margin:6px 10px 0 0;padding:2px 8px;border:1px solid {_mix(LIME, 0.3)};border-radius:4px;'
-                    f'font-family:{EMAIL_MONO};font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:{_mix(LIME, 0.9)};">{html.escape(cell.replace("**", ""))}</span>'
+                    f'<span style="display:inline-block;margin:6px 10px 0 0;padding:2px 8px;border:1px solid {_mix(PAPER, 0.2)};border-radius:4px;'
+                    f'font-family:{EMAIL_MONO};font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:{_mix(PAPER, 0.7)};">{html.escape(cell.replace("**", ""))}</span>'
                 )
             else:
-                label = _mono_label(header[col], _mix(LIME, 0.6)) + "&nbsp;" if col < len(header) and header[col] else ""
-                tags.append(f'<span style="display:inline-block;margin:6px 10px 0 0;font-family:{EMAIL_SANS};font-size:13px;color:{_mix(PAPER, 0.55)};">{label}{_inline(cell)}</span>')
+                label = _mono_label(header[col], _mix(PAPER, 0.45)) + "&nbsp;" if col < len(header) and header[col] else ""
+                tags.append(f'<span style="display:inline-block;margin:6px 10px 0 0;font-family:{EMAIL_SANS};font-size:14px;color:{_mix(PAPER, 0.55)};">{label}{_inline(cell)}</span>')
         items.append(
-            f'<div style="margin:0 0 16px 0;"><p style="margin:0;font-family:{EMAIL_SANS};font-size:15px;line-height:1.6;color:{_mix(PAPER, 1)};">{_inline(r[0])}</p>{"".join(tags)}</div>'
+            f'<div style="margin:0 0 16px 0;"><p style="margin:0;font-family:{EMAIL_SANS};font-size:16px;line-height:1.625;color:{_mix(PAPER, 1)};">{_inline(r[0])}</p>{"".join(tags)}</div>'
         )
     return "".join(items)
 
@@ -562,21 +559,23 @@ def _render_block(block: dict, section_key: str) -> str:
     if kind == "note":
         return _note(_inline(block["text"]))
     if kind == "sub":
-        return f'<p style="margin:8px 0 10px 0;font-family:{EMAIL_DISPLAY};font-weight:700;font-size:18px;line-height:1.3;color:{_mix(PAPER, 1)};">{_inline(block["text"])}</p>'
+        return f'<p style="margin:8px 0 10px 0;font-family:{EMAIL_SANS};font-weight:700;font-size:18px;line-height:1.3;color:{_mix(PAPER, 1)};">{_inline(block["text"])}</p>'
     # Fully italic lines are asides, e.g. "*(Individual votes not recorded)*"
     if re.match(r"^\*[^*].*\*$", block["text"]):
         return _note(html.escape(block["text"][1:-1], quote=False))
     return _p(_inline(block["text"]), _mix(PAPER, 0.85))
 
 
-def render_summary_html(summary: str) -> str:
-    """Email body for a meeting summary: In Brief, caveats, then each section."""
+def render_summary_html(summary: str, after_brief: str = "") -> str:
+    """Email body for a meeting summary: In Brief, `after_brief` (the PDF button), caveats, then each section."""
     sections = parse_summary(summary)
     out = []
 
     brief = next((s for s in sections if s["key"] == "brief"), None)
     if brief:
-        out.append(f'<p style="margin:24px 0 0 0;font-family:{EMAIL_SANS};font-size:19px;line-height:1.55;color:{_mix(PAPER, 1)};">{_inline(_flat_text(brief["blocks"]))}</p>')
+        out.append(f'<p style="margin:32px 0 0 0;font-family:{EMAIL_SANS};font-size:16px;line-height:1.625;color:{_mix(PAPER, 1)};">{_inline(_flat_text(brief["blocks"]))}</p>')
+    # Summaries without an In Brief get it right under the title
+    out.append(after_brief)
 
     # From the overview, keep only quoted caveats (e.g. incomplete minutes) — never quorum, attendance, time or location
     overview = next((s for s in sections if s["key"] == "overview"), None)
@@ -584,17 +583,14 @@ def render_summary_html(summary: str) -> str:
         if b["kind"] == "note" and not LOGISTICS.search(b["text"]):
             out.append(f'<div style="margin-top:16px;">{_note(_inline(b["text"]))}</div>')
 
-    rule = f"margin-top:32px;padding-top:18px;border-top:1px solid {_mix(LIME, 0.15)};"
+    rule = f"margin-top:40px;padding-top:20px;border-top:1px solid {_mix(PAPER, 0.1)};"
     for s in sections:
-        if s["key"] in ("brief", "overview"):
+        # "No votes were recorded…" style sections are hidden, as on the site
+        if s["key"] in ("brief", "overview") or _is_empty_section(s):
             continue
-        label = _mono_label(SECTION_TITLES[s["key"]], _mix(LIME, 1)) if s["key"] in SECTION_TITLES else ""
-        if _is_empty_section(s):
-            first = re.split(r"(?<=\.)\s", _flat_text(s["blocks"]))[0]
-            out.append(f'<div style="{rule}">{label}&nbsp;&nbsp;<span style="font-family:{EMAIL_SANS};font-size:14px;color:{_mix(PAPER, 0.45)};">{html.escape(first)}</span></div>')
-            continue
+        label = _mono_label(SECTION_TITLES[s["key"]], _mix(PAPER, 0.7)) if s["key"] in SECTION_TITLES else ""
         body = "".join(_render_block(b, s["key"]) for b in s["blocks"])
-        out.append(f'<div style="{rule}">{label}<div style="margin-top:16px;">{body}</div></div>')
+        out.append(f'<div style="{rule}">{label}<div style="margin-top:20px;">{body}</div></div>')
 
     return "\n".join(out)
 
@@ -634,31 +630,29 @@ def meeting_title(meeting_type: str) -> str:
 
 
 # ── Email digest ───────────────────────────────────────────────────────────────
-def _long_date(date_str: Optional[str]) -> str:
-    """'Feb 05, 2026' → 'February 5th, 2026' (matches the site's panel header)."""
+def _plain_date(date_str: Optional[str]) -> str:
+    """'Feb 05, 2026' → 'February 5 2026' (matches the site's meeting cards)."""
     if not date_str:
         return "Unknown date"
     try:
         d = datetime.strptime(date_str, "%b %d, %Y")
     except ValueError:
         return date_str
-    day = d.day
-    suffix = "th" if 11 <= day <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
-    return f"{d.strftime('%B')} {day}{suffix}, {d.year}"
+    return f"{d.strftime('%B')} {d.day} {d.year}"
 
 
-def build_digest_html(meeting: dict) -> str:
-    """Dark green email matching the Holladay Digest site."""
+def build_digest_html(meeting: dict, unsubscribe_url: str) -> str:
+    """Simple dark green email: masthead, then the meeting on a card as it appears on the site."""
     title = html.escape(meeting_title(meeting["meeting_type"]))
-    body_html = render_summary_html(meeting["summary"])
     pdf_button = ""
     if meeting.get("pdf_url"):
         pdf_button = f"""
           <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0 0 0;">
-            <tr><td style="border:1px solid #8FFF7A;border-radius:8px;">
-              <a href="{meeting['pdf_url']}" style="display:inline-block;padding:12px 32px;font-family:{EMAIL_MONO};font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#8FFF7A;text-decoration:none;">View PDF</a>
+            <tr><td style="border:1px solid #8FFF7A;border-radius:6px;">
+              <a href="{html.escape(meeting['pdf_url'])}" style="display:inline-block;padding:8px 16px;font-family:{EMAIL_MONO};font-size:12px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#8FFF7A;text-decoration:none;white-space:nowrap;">View PDF</a>
             </td></tr>
           </table>"""
+    body_html = render_summary_html(meeting["summary"], pdf_button)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -667,33 +661,29 @@ def build_digest_html(meeting: dict) -> str:
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
 <meta name="supported-color-schemes" content="dark">
-<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Roboto+Mono:wght@400;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Zalando+Sans:wght@400;500;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   @media (max-width: 620px) {{
-    .hd {{ font-size: 11.6vw !important; }}
     .px {{ padding-left: 20px !important; padding-right: 20px !important; }}
-    .frame {{ padding: 110px 12px 0 !important; }}
+    /* Phones: a narrower margin around the card */
+    .wrap {{ padding: 32px 24px !important; }}
   }}
 </style>
 </head>
 <body style="margin:0;padding:0;background:#16290F;text-wrap:pretty;" bgcolor="#16290F">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#16290F" style="background:#16290F;">
-    <tr><td align="center" style="padding:32px 0 40px;">
+    <tr><td class="wrap" align="center" style="padding:48px 24px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;">
-        <tr><td class="px" style="padding:0 24px 28px;">
-          <p class="hd" style="margin:0;font-family:{EMAIL_DISPLAY};font-weight:700;font-size:78px;line-height:0.85;letter-spacing:-0.01em;text-transform:uppercase;color:#8FFF7A;">Holladay Digest</p>
+        <tr><td style="padding:0 0 28px 0;">
+          <p style="margin:0;font-family:{EMAIL_SANS};font-weight:500;font-size:36px;line-height:1.1;letter-spacing:-0.01em;color:#EEF2EA;">Holladay Digest</p>
         </td></tr>
-        <tr><td class="frame" background="{EMAIL_HALFTONE_URL}" bgcolor="#16290F" style="background-color:#16290F;background-image:url('{EMAIL_HALFTONE_URL}');background-repeat:no-repeat;background-position:center top;background-size:100% auto;padding:185px 28px 0;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-            <tr><td bgcolor="#0F1A0D" class="px" style="background:#0F1A0D;padding:36px 40px 40px;">
-          <p style="margin:0;font-family:{EMAIL_MONO};font-size:13px;color:#EEF2EA;">{_long_date(meeting.get("meeting_date"))}</p>
-          <h1 style="margin:4px 0 0 0;font-family:{EMAIL_DISPLAY};font-weight:400;font-size:32px;line-height:1.15;color:#EEF2EA;">{title}</h1>{pdf_button}
+        <tr><td bgcolor="#0F1A0D" class="px" style="background:#0F1A0D;padding:48px;">
+          <p style="margin:0;font-family:{EMAIL_MONO};font-size:12px;color:{_mix(PAPER, 0.7)};">{_plain_date(meeting.get("meeting_date"))}</p>
+          <h1 style="margin:16px 0 0 0;font-family:{EMAIL_SANS};font-weight:400;font-size:24px;line-height:1.25;color:#EEF2EA;">{title}</h1>
           {body_html}
-            </td></tr>
-          </table>
         </td></tr>
-        <tr><td class="px" style="padding:24px 24px 0;">
-          <p style="margin:0;font-family:{EMAIL_MONO};font-size:11px;line-height:1.6;color:#8FFF7A;opacity:0.7;">You're receiving this because you subscribed to Holladay Digest. <a href="https://resend.com/unsubscribe" style="color:#8FFF7A;text-decoration:underline;">Unsubscribe</a></p>
+        <tr><td style="padding:24px 0 0 0;">
+          <p style="margin:0;font-family:{EMAIL_MONO};font-size:12px;line-height:1.6;color:#7D9475;">You're receiving this because you subscribed to <a href="{SITE_URL}" style="color:#7D9475;text-decoration:underline;">Holladay Digest</a>. <a href="{html.escape(unsubscribe_url)}" style="color:#7D9475;text-decoration:underline;">Unsubscribe</a></p>
         </td></tr>
       </table>
     </td></tr>
@@ -703,45 +693,58 @@ def build_digest_html(meeting: dict) -> str:
 
 
 def send_digest(new_meetings: list[dict], resend_api_key: str) -> None:
-    """Send an email digest to all subscribers for each new meeting."""
+    """Email each new meeting to every subscriber, one copy each so no one sees the other addresses."""
     audience_id = "f0e9aae2-f00b-4af6-b995-34ad472d3429"
     headers = {"Authorization": f"Bearer {resend_api_key}", "Content-Type": "application/json"}
 
-    # Fetch subscribers
-    resp = requests.get(
-        f"https://api.resend.com/audiences/{audience_id}/contacts",
-        headers=headers,
-        timeout=10,
-    )
-    if not resp.ok:
-        print(f"  [WARN] Could not fetch subscribers: {resp.text}")
-        return
+    # Fetch subscribers, following pages if the list is long
+    contacts, after = [], None
+    while True:
+        params = {"limit": 100, **({"after": after} if after else {})}
+        resp = requests.get(f"https://api.resend.com/audiences/{audience_id}/contacts", headers=headers, params=params, timeout=10)
+        if not resp.ok:
+            print(f"  [WARN] Could not fetch subscribers: {resp.text}")
+            return
+        page = resp.json()
+        data = page.get("data", [])
+        contacts += [c for c in data if not c.get("unsubscribed")]
+        if not page.get("has_more") or not data:
+            break
+        after = data[-1]["id"]
 
-    contacts = [c for c in resp.json().get("data", []) if not c.get("unsubscribed")]
     if not contacts:
         print("  No subscribers to email.")
         return
-
-    emails = [c["email"] for c in contacts]
-    print(f"  Sending digest to {len(emails)} subscriber(s)...")
+    print(f"  Sending digest to {len(contacts)} subscriber(s)...")
 
     for meeting in new_meetings:
-        meeting_type = meeting["meeting_type"]
         meeting_date = meeting["meeting_date"] or "Unknown date"
-        html = build_digest_html(meeting)
+        subject = f"{meeting_title(meeting['meeting_type'])}, {_plain_date(meeting['meeting_date'])}"
+        emails = []
+        for c in contacts:
+            # The contact id is the unsubscribe token; /unsubscribe asks to confirm, and mail apps can POST one-click
+            unsubscribe_url = f"{SITE_URL}/unsubscribe?id={c['id']}"
+            emails.append({
+                "from": "Holladay Digest <hi@matthewdwilliams.com>",
+                "to": [c["email"]],
+                "subject": subject,
+                "html": build_digest_html(meeting, unsubscribe_url),
+                "headers": {
+                    "List-Unsubscribe": f"<{SITE_URL}/api/unsubscribe?id={c['id']}>",
+                    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+                },
+            })
 
-        payload = {
-            "from": "hi@matthewdwilliams.com",
-            "to": emails,
-            "subject": f"New meeting minutes: {meeting_type} — {meeting_date}",
-            "html": html,
-        }
-
-        send_resp = requests.post("https://api.resend.com/emails", headers=headers, json=payload, timeout=15)
-        if send_resp.ok:
-            print(f"  Sent: {meeting_type} | {meeting_date}")
-        else:
-            print(f"  [WARN] Email failed: {send_resp.text}")
+        # The batch endpoint takes up to 100 emails per request
+        sent = 0
+        for i in range(0, len(emails), 100):
+            send_resp = requests.post("https://api.resend.com/emails/batch", headers=headers, json=emails[i:i + 100], timeout=30)
+            if send_resp.ok:
+                sent += len(emails[i:i + 100])
+            else:
+                print(f"  [WARN] Email batch failed: {send_resp.text}")
+            time.sleep(0.6)  # stay under Resend's rate limit
+        print(f"  Sent {sent}/{len(emails)}: {meeting['meeting_type']} | {meeting_date}")
 
 
 # ── Main ───────────────────────────────────────────────────────────────────────

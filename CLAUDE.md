@@ -18,7 +18,7 @@ AI summaries of Holladay, UT city meeting minutes. Live at https://holladay.fyi.
 
 ## Scraper (`scraper.py`)
 
-- Finds new minutes on the OneSuite portal, reads the PDF (pdfplumber) or the event-page transcript, summarizes with `SUMMARY_MODEL` (`claude-opus-5-5`, effort high), stores it in `meeting_summaries.db`, and emails subscribers via Resend.
+- Finds new minutes on the OneSuite portal, reads the PDF (pdfplumber) or the event-page transcript, summarizes with `SUMMARY_MODEL` (`claude-opus-5-5`, effort high), stores it in `meeting_summaries.db`, and emails each subscriber their own copy via Resend's batch endpoint (`build_digest_html` mirrors the site's meeting card).
 - `SUMMARY_PROMPT` sets the summary format the site parses (`##` sections, bullets, tables) and the rules: spell it "Holladay", one spelling per person, roughly 400–800 words.
 - Table `meeting_summaries`: `id, meeting_type, meeting_date ("Oct 20, 2026"), pdf_url, summary, created_at` (shown as "Summarized").
 - `.github/workflows/scrape.yml` runs nightly at 06:00 UTC and commits the DB if it changed.
@@ -32,6 +32,7 @@ AI summaries of Holladay, UT city meeting minutes. Live at https://holladay.fyi.
 - `MeetingList.tsx`: dates (`10/06/26`), a vertical list on desktop and a sticky horizontal strip on mobile. `MeetingSummary.tsx` parses the markdown-ish summaries.
 - `HalftoneHero.tsx`: menu (About · Search · Newsletter), shader image, "Holladay Digest" title (container-query sized). It sets `data-hero-ready` on `<html>` once the canvas paints.
 - Overlays: `Overlays.tsx` (state; ⌘K and `/` open search), `Overlay.tsx` (shared dialog: clip-path from the trigger, `inert` page, focus restore), plus About, Search (`app/actions.ts` `searchMeetings`) and Newsletter (`app/api/subscribe`).
+- `app/unsubscribe` (confirm page) and `app/api/unsubscribe` (also takes mail apps' one-click POST): digest unsubscribe links, keyed by the Resend contact id.
 - `lib/db.ts` (queries), `lib/meetingColors.ts` (`getCanonicalType`, `getSubtype`), `lib/utils.ts` (`formatDotDate`, `formatPlainDate`).
 
 ## Motion conventions
