@@ -327,7 +327,8 @@ def resummarize_latest(conn: sqlite3.Connection, claude: anthropic.Anthropic, se
         except (anthropic.APIError, SummaryError) as e:
             print(f"failed: {e}")
             continue
-        conn.execute("UPDATE meeting_summaries SET summary = ? WHERE id = ?", (summary, row_id))
+        # Bump created_at too: the site shows it as the "Summarized" date
+        conn.execute("UPDATE meeting_summaries SET summary = ?, created_at = datetime('now') WHERE id = ?", (summary, row_id))
         conn.commit()
         print(f"OK ({len(summary):,} chars)")
 
